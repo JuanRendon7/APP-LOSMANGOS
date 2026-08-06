@@ -1,0 +1,64 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Marca Hotel Los Mangos: gris y blanco. El logo se integra despues como */
+  /* imagen; estos tokens son el unico lugar a tocar para reemplazar marca. */
+  --color-marca-50: oklch(0.985 0 0);
+  --color-marca-100: oklch(0.97 0 0);
+  --color-marca-200: oklch(0.922 0 0);
+  --color-marca-300: oklch(0.87 0 0);
+  --color-marca-400: oklch(0.708 0 0);
+  --color-marca-500: oklch(0.556 0 0);
+  --color-marca-600: oklch(0.439 0 0);
+  --color-marca-700: oklch(0.371 0 0);
+  --color-marca-800: oklch(0.269 0 0);
+  --color-marca-900: oklch(0.205 0 0);
+  --color-marca-950: oklch(0.145 0 0);
+
+  --color-background: var(--color-marca-50);
+  --color-foreground: var(--color-marca-900);
+  --color-primary: var(--color-marca-800);
+  --color-primary-foreground: var(--color-marca-50);
+  --color-secondary: var(--color-marca-200);
+  --color-secondary-foreground: var(--color-marca-900);
+  --color-muted: var(--color-marca-100);
+  --color-muted-foreground: var(--color-marca-500);
+  --color-accent: var(--color-marca-200);
+  --color-accent-foreground: var(--color-marca-900);
+  --color-destructive: oklch(0.577 0.245 27.325);
+  --color-destructive-foreground: var(--color-marca-50);
+  --color-border: var(--color-marca-200);
+  --color-input: var(--color-marca-200);
+  --color-ring: var(--color-marca-400);
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: var(--color-marca-900);
+
+  --radius-lg: 0.625rem;
+  --radius-md: calc(var(--radius-lg) - 0.125rem);
+  --radius-sm: calc(var(--radius-lg) - 0.25rem);
+}
+
+:root[data-theme="dark"] {
+  --color-background: var(--color-marca-950);
+  --color-foreground: var(--color-marca-50);
+  --color-primary: var(--color-marca-100);
+  --color-primary-foreground: var(--color-marca-900);
+  --color-secondary: var(--color-marca-800);
+  --color-secondary-foreground: var(--color-marca-50);
+  --color-muted: var(--color-marca-800);
+  --color-muted-foreground: var(--color-marca-400);
+  --color-accent: var(--color-marca-800);
+  --color-accent-foreground: var(--color-marca-50);
+  --color-border: var(--color-marca-800);
+  --color-input: var(--color-marca-800);
+  --color-card: var(--color-marca-900);
+  --color-card-foreground: var(--color-marca-50);
+}
+
+body {
+  @apply bg-background text-foreground;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}

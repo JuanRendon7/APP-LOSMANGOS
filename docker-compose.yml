@@ -1,0 +1,97 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hotel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hotel}
+      POSTGRES_DB: ${POSTGRES_DB:-hotel_mangos}
+    ports:
+      - "127.0.0.1:55434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hotel}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:56380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      target: dev
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8020:8000"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/alembic:/app/alembic
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-hotel}:${POSTGRES_PASSWORD:-hotel}@postgres:5432/${POSTGRES_DB:-hotel_mangos}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-change-me}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:55174}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@hotellosmangos.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}
+      ADMIN_NOMBRE: ${ADMIN_NOMBRE:-Administrador}
+      BOOKING_ICAL_TOKEN_SECRET: ${BOOKING_ICAL_TOKEN_SECRET:-dev-secret-change-me}
+      TZ: America/Bogota
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_worker:
+    build:
+      context: ./backend
+      target: dev
+    restart: unless-stopped
+    entrypoint: ["uv", "run", "celery"]
+    command: ["-A", "src.shared.celery_app.celery_app", "worker", "-B", "--loglevel=info"]
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/alembic:/app/alembic
+    environment:
+      ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-hotel}:${POSTGRES_PASSWORD:-hotel}@postgres:5432/${POSTGRES_DB:-hotel_mangos}
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-change-me}
+      BOOKING_ICAL_TOKEN_SECRET: ${BOOKING_ICAL_TOKEN_SECRET:-dev-secret-change-me}
+      TZ: America/Bogota
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:55174:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/public:/app/public
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8020}
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

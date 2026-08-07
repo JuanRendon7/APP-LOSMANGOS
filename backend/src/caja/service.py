@@ -194,3 +194,22 @@ class CajaService:
 
         venta.monto = total
         return venta
+
+    def deshacer_ultima_venta(self, id_usuario: int) -> Venta:
+        turno = self._turno_abierto_de(id_usuario)
+        ventas = self.repository.listar_ventas(turno.id_turno, None, None)
+        if not ventas:
+            raise BusinessRuleError("No hay ventas para deshacer en este turno")
+        ultima = ventas[0]
+        if ultima.origen != "MOSTRADOR":
+            raise BusinessRuleError(
+                "Solo se pueden deshacer ventas de mostrador; los cobros de "
+                "habitacion o mesa se corrigen desde su propia pantalla"
+            )
+        for item in ultima.items:
+            if item.id_producto_bar is not None:
+                self.productos_service.ajustar_stock_bar(
+                    item.id_producto_bar, item.cantidad
+                )
+        self.repository.eliminar_venta(ultima)
+        return ultima

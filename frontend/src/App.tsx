@@ -2,7 +2,6 @@ import { Route, Routes } from 'react-router'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { CajaPage } from '@/features/caja/CajaPage'
 import { VenderPage } from '@/features/caja/VenderPage'
-import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { HabitacionesPage } from '@/features/hospedaje/HabitacionesPage'
 import { ReportesPage } from '@/features/hospedaje/ReportesPage'
 import { ProductosBarPage } from '@/features/productos/ProductosBarPage'
@@ -10,6 +9,7 @@ import { ProductosRestaurantePage } from '@/features/productos/ProductosRestaura
 import { ComandaPage } from '@/features/restaurante/ComandaPage'
 import { MapaMesasPage } from '@/features/restaurante/MapaMesasPage'
 import { TarifarioPage } from '@/features/tarifas/TarifarioPage'
+import { UsuariosPage } from '@/features/usuarios/UsuariosPage'
 import { AuthProvider } from '@/shared/auth/AuthContext'
 import { RequierePermiso, RequiereSesion } from '@/shared/auth/guards'
 import { AppShell } from '@/shared/layout/AppShell'
@@ -32,16 +32,6 @@ export default function App() {
           }
         />
         <Route
-          path="/resumen"
-          element={
-            <RequiereSesion>
-              <AppShell>
-                <DashboardPage />
-              </AppShell>
-            </RequiereSesion>
-          }
-        />
-        <Route
           path="/habitaciones"
           element={
             <RequiereSesion>
@@ -58,7 +48,7 @@ export default function App() {
           element={
             <RequiereSesion>
               <AppShell>
-                <RequierePermiso recurso="RESERVAS" accion="VER">
+                <RequierePermiso recurso="REPORTES" accion="VER">
                   <ReportesPage />
                 </RequierePermiso>
               </AppShell>
@@ -120,6 +110,18 @@ export default function App() {
               <AppShell>
                 <RequierePermiso recurso="CAJA" accion="VER">
                   <CajaPage />
+                </RequierePermiso>
+              </AppShell>
+            </RequiereSesion>
+          }
+        />
+        <Route
+          path="/usuarios"
+          element={
+            <RequiereSesion>
+              <AppShell>
+                <RequierePermiso recurso="USUARIOS" accion="VER">
+                  <UsuariosPage />
                 </RequierePermiso>
               </AppShell>
             </RequiereSesion>

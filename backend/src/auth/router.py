@@ -24,6 +24,8 @@ def _usuario_response(usuario) -> UsuarioResponse:
     return UsuarioResponse(
         id_usuario=usuario.id_usuario,
         nombre=usuario.nombre,
+        cedula=usuario.cedula,
+        celular=usuario.celular,
         email=usuario.email,
         activo=usuario.activo,
         roles=[ur.rol.codigo for ur in usuario.roles],

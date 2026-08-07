@@ -38,9 +38,17 @@ def client(db_session):
     app.dependency_overrides.pop(get_db, None)
 
 
-def _crear_usuario_con_rol(db_session, email: str, codigo_rol: str) -> Usuario:
+def _crear_usuario_con_rol(
+    db_session, email: str, codigo_rol: str, cedula: str
+) -> Usuario:
     rol = db_session.query(Rol).filter(Rol.codigo == codigo_rol).one()
-    usuario = Usuario(nombre=f"Test {codigo_rol}", email=email, password_hash=hash_password("clave12345"))
+    usuario = Usuario(
+        nombre=f"Test {codigo_rol}",
+        cedula=cedula,
+        celular="3000000000",
+        email=email,
+        password_hash=hash_password("clave12345"),
+    )
     db_session.add(usuario)
     db_session.flush()
     db_session.add(UsuarioRol(id_usuario=usuario.id_usuario, id_rol=rol.id_rol))
@@ -50,12 +58,16 @@ def _crear_usuario_con_rol(db_session, email: str, codigo_rol: str) -> Usuario:
 
 @pytest.fixture
 def usuario_admin(db_session):
-    return _crear_usuario_con_rol(db_session, "admin.test@hotellosmangos.com", "ADMINISTRADOR")
+    return _crear_usuario_con_rol(
+        db_session, "admin.test@hotellosmangos.com", "ADMINISTRADOR", "1000000001"
+    )
 
 
 @pytest.fixture
 def usuario_empleado(db_session):
-    return _crear_usuario_con_rol(db_session, "empleado.test@hotellosmangos.com", "EMPLEADO")
+    return _crear_usuario_con_rol(
+        db_session, "empleado.test@hotellosmangos.com", "EMPLEADO", "1000000002"
+    )
 
 
 def token_para(client, email: str, password: str = "clave12345") -> str:

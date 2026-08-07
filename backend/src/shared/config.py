@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     admin_email: str = "admin@hotellosmangos.com"
     admin_password: str = "change-me-in-env"
     admin_nombre: str = "Administrador"
+    admin_cedula: str = "0000000000"
+    admin_celular: str = "3000000000"
 
     booking_ical_token_secret: str = "change-me-in-env"
 

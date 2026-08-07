@@ -127,6 +127,8 @@ def seed() -> None:
         if admin is None:
             admin = Usuario(
                 nombre=settings.admin_nombre,
+                cedula=settings.admin_cedula,
+                celular=settings.admin_celular,
                 email=settings.admin_email,
                 password_hash=hash_password(settings.admin_password),
             )

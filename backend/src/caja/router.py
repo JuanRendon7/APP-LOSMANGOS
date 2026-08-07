@@ -312,3 +312,26 @@ def venta_mostrador(
         ) from exc
     db.refresh(venta)
     return _venta_response(venta)
+
+
+@ventas_router.post("/deshacer-ultima", response_model=VentaResponse)
+def deshacer_ultima_venta(
+    db: Session = Depends(get_db),
+    actor: UsuarioActual = Depends(requiere_permiso("VENTAS", "EDITAR")),
+    servicio: CajaService = Depends(get_caja_service),
+):
+    try:
+        venta = servicio.deshacer_ultima_venta(actor.id_usuario)
+        respuesta = _venta_response(venta)
+        db.commit()
+    except NotFoundError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except BusinessRuleError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    return respuesta

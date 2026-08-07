@@ -27,6 +27,8 @@ class UsuarioActual(BaseModel):
 
 class UsuarioBase(BaseModel):
     nombre: str = Field(min_length=1, max_length=150)
+    cedula: str = Field(min_length=1, max_length=20)
+    celular: str = Field(min_length=1, max_length=20)
     email: EmailStr
 
 
@@ -37,6 +39,8 @@ class UsuarioCreate(UsuarioBase):
 
 class UsuarioUpdate(BaseModel):
     nombre: str | None = None
+    cedula: str | None = Field(default=None, min_length=1, max_length=20)
+    celular: str | None = Field(default=None, min_length=1, max_length=20)
     activo: bool | None = None
     roles: list[str] | None = None
     password: str | None = Field(default=None, min_length=8)

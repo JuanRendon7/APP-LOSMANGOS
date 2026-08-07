@@ -1,4 +1,28 @@
+import {
+  Banknote,
+  BedDouble,
+  Clock,
+  Coins,
+  CreditCard,
+  LayoutGrid,
+  Percent,
+  QrCode,
+  Receipt,
+  Repeat,
+  ShoppingCart,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { useAuth } from '@/shared/auth/AuthContext'
 import {
   abrirTurno,
@@ -7,9 +31,10 @@ import {
   crearGasto,
   eliminarGasto,
   listarGastos,
+  listarVentas,
   obtenerTurnoActual,
 } from './api'
-import type { Gasto, TurnoCaja } from './types'
+import type { Gasto, OrigenVenta, TurnoCaja, Venta } from './types'
 
 const formatoMoneda = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -17,12 +42,33 @@ const formatoMoneda = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 0,
 })
 
+function tiempoTranscurrido(iso: string): string {
+  const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
+  const horas = Math.floor(mins / 60)
+  const minutos = mins % 60
+  return horas === 0 ? `${minutos}m` : `${horas}h ${minutos}m`
+}
+
+const ETIQUETA_ORIGEN: Record<OrigenVenta, string> = {
+  HABITACION: 'Habitacion',
+  MESA: 'Mesa',
+  MOSTRADOR: 'Mostrador',
+}
+
+const ICONO_ORIGEN: Record<OrigenVenta, LucideIcon> = {
+  HABITACION: BedDouble,
+  MESA: LayoutGrid,
+  MOSTRADOR: ShoppingCart,
+}
+
 export function CajaPage() {
   const { tienePermiso } = useAuth()
   const [turno, setTurno] = useState<TurnoCaja | null | undefined>(undefined)
   const [gastos, setGastos] = useState<Gasto[]>([])
+  const [ventas, setVentas] = useState<Venta[]>([])
   const [error, setError] = useState<string | null>(null)
   const [ultimoCierre, setUltimoCierre] = useState<TurnoCaja | null>(null)
+  const [, forzarTick] = useState(0)
 
   const puedeAbrir = tienePermiso('CAJA', 'CREAR')
   const puedeCerrar = tienePermiso('CAJA', 'CERRAR')
@@ -35,9 +81,15 @@ export function CajaPage() {
       const actual = await obtenerTurnoActual()
       setTurno(actual)
       if (actual) {
-        setGastos(await listarGastos(actual.id_turno))
+        const [gastosDatos, ventasDatos] = await Promise.all([
+          listarGastos(actual.id_turno),
+          listarVentas(actual.id_turno),
+        ])
+        setGastos(gastosDatos)
+        setVentas(ventasDatos)
       } else {
         setGastos([])
+        setVentas([])
       }
     } catch {
       setError('No se pudo cargar el estado de la caja.')
@@ -47,6 +99,11 @@ export function CajaPage() {
   useEffect(() => {
     cargar()
   }, [cargar])
+
+  useEffect(() => {
+    const id = setInterval(() => forzarTick((t) => t + 1), 60000)
+    return () => clearInterval(id)
+  }, [])
 
   if (turno === undefined) {
     return <p className="text-sm text-muted-foreground">Cargando...</p>
@@ -77,7 +134,7 @@ export function CajaPage() {
       )}
       {turno && (
         <>
-          <ResumenTurnoCard turno={turno} />
+          <ResumenTurnoCard turno={turno} ventas={ventas} />
           <GastosCard
             turno={turno}
             gastos={gastos}
@@ -138,7 +195,9 @@ function AbrirCajaCard({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="mb-3 font-semibold text-card-foreground">Abrir caja</h3>
+      <h3 className="mb-3 flex items-center gap-2 font-semibold text-card-foreground">
+        <Wallet size={18} className="text-primary" /> Abrir caja
+      </h3>
       <div className="flex flex-wrap items-end gap-2">
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">
@@ -164,33 +223,125 @@ function AbrirCajaCard({
   )
 }
 
-function ResumenTurnoCard({ turno }: { turno: TurnoCaja }) {
+function StatMini({
+  icon: Icono,
+  etiqueta,
+  valor,
+}: {
+  icon: LucideIcon
+  etiqueta: string
+  valor: string
+}) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="mb-3 font-semibold text-card-foreground">Turno actual</h3>
-      <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-        <Metrica etiqueta="Apertura" valor={formatoMoneda.format(turno.monto_apertura)} />
-        <Metrica etiqueta="Efectivo" valor={formatoMoneda.format(turno.total_efectivo)} />
-        <Metrica etiqueta="Tarjeta" valor={formatoMoneda.format(turno.total_tarjeta)} />
-        <Metrica
-          etiqueta="Transferencia"
-          valor={formatoMoneda.format(turno.total_transferencia)}
-        />
-        <Metrica etiqueta="QR" valor={formatoMoneda.format(turno.total_qr)} />
-        <Metrica etiqueta="Gastos" valor={formatoMoneda.format(turno.total_gastos)} />
+    <div className="rounded-lg border border-border bg-background p-3">
+      <div className="mb-1.5 flex h-7 w-7 items-center justify-center rounded-md bg-muted text-primary">
+        <Icono size={14} />
       </div>
-      <p className="mt-3 text-sm font-semibold text-foreground">
-        Esperado en efectivo: {formatoMoneda.format(turno.monto_esperado_efectivo)}
-      </p>
+      <p className="text-xs text-muted-foreground">{etiqueta}</p>
+      <p className="text-sm font-semibold text-foreground">{valor}</p>
     </div>
   )
 }
 
-function Metrica({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+function ResumenTurnoCard({ turno, ventas }: { turno: TurnoCaja; ventas: Venta[] }) {
+  const datosGrafico = [
+    { metodo: 'Efectivo', monto: turno.total_efectivo },
+    { metodo: 'Tarjeta', monto: turno.total_tarjeta },
+    { metodo: 'Transferencia', monto: turno.total_transferencia },
+    { metodo: 'QR', monto: turno.total_qr },
+  ]
+
+  const conteoOrigen = (['HABITACION', 'MESA', 'MOSTRADOR'] as OrigenVenta[]).map((origen) => ({
+    origen,
+    cantidad: ventas.filter((v) => v.origen === origen).length,
+  }))
+
   return (
-    <div>
-      <p className="text-xs text-muted-foreground">{etiqueta}</p>
-      <p className="font-medium text-foreground">{valor}</p>
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 font-semibold text-card-foreground">
+          <Wallet size={18} className="text-primary" /> Turno actual
+        </h3>
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Clock size={13} /> Abierto hace {tiempoTranscurrido(turno.creado_en)}
+        </span>
+      </div>
+
+      <div className="mb-4 rounded-lg bg-primary/10 p-4 text-center">
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+          Esperado en efectivo
+        </p>
+        <p className="mt-1 text-3xl font-bold text-foreground">
+          {formatoMoneda.format(turno.monto_esperado_efectivo)}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Apertura {formatoMoneda.format(turno.monto_apertura)} + efectivo vendido{' '}
+          {formatoMoneda.format(turno.total_efectivo)} − gastos{' '}
+          {formatoMoneda.format(turno.total_gastos)}
+        </p>
+      </div>
+
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <StatMini icon={Banknote} etiqueta="Efectivo" valor={formatoMoneda.format(turno.total_efectivo)} />
+        <StatMini icon={CreditCard} etiqueta="Tarjeta" valor={formatoMoneda.format(turno.total_tarjeta)} />
+        <StatMini icon={Repeat} etiqueta="Transferencia" valor={formatoMoneda.format(turno.total_transferencia)} />
+        <StatMini icon={QrCode} etiqueta="QR" valor={formatoMoneda.format(turno.total_qr)} />
+        <StatMini icon={Receipt} etiqueta="Gastos" valor={formatoMoneda.format(turno.total_gastos)} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div>
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Ventas por metodo de pago
+          </h4>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={datosGrafico}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="metodo" tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }} />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
+                  width={40}
+                />
+                <Tooltip
+                  formatter={(valor) => formatoMoneda.format(Number(valor))}
+                  contentStyle={{
+                    background: 'var(--color-card)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                />
+                <Bar dataKey="monto" name="Monto" fill="var(--color-primary)" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div>
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Ventas por origen · {ventas.length} en total
+          </h4>
+          <ul className="space-y-2">
+            {conteoOrigen.map(({ origen, cantidad }) => {
+              const Icono = ICONO_ORIGEN[origen]
+              return (
+                <li
+                  key={origen}
+                  className="flex items-center justify-between rounded-md border border-border px-3 py-2 text-sm"
+                >
+                  <span className="flex items-center gap-2 text-foreground">
+                    <Icono size={15} className="text-muted-foreground" />
+                    {ETIQUETA_ORIGEN[origen]}
+                  </span>
+                  <span className="font-medium text-foreground">{cantidad}</span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      </div>
     </div>
   )
 }
@@ -270,7 +421,16 @@ function GastosCard({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="mb-3 font-semibold text-card-foreground">Gastos del turno</h3>
+      <h3 className="mb-3 flex items-center justify-between font-semibold text-card-foreground">
+        <span className="flex items-center gap-2">
+          <Receipt size={18} className="text-primary" /> Gastos del turno
+        </span>
+        {gastos.length > 0 && (
+          <span className="text-sm font-normal text-muted-foreground">
+            Total {formatoMoneda.format(turno.total_gastos)}
+          </span>
+        )}
+      </h3>
       <ul className="mb-3 space-y-1">
         {gastos.map((gasto) => (
           <li key={gasto.id_gasto} className="flex items-center justify-between gap-2 text-sm">
@@ -374,6 +534,8 @@ function CerrarCajaCard({
   const [montoContado, setMontoContado] = useState(turno.monto_esperado_efectivo)
   const [procesando, setProcesando] = useState(false)
 
+  const diferencia = montoContado - turno.monto_esperado_efectivo
+
   const manejarCerrar = async () => {
     setError(null)
     setProcesando(true)
@@ -389,7 +551,9 @@ function CerrarCajaCard({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="mb-3 font-semibold text-card-foreground">Cerrar caja</h3>
+      <h3 className="mb-3 flex items-center gap-2 font-semibold text-card-foreground">
+        <Coins size={18} className="text-primary" /> Cerrar caja
+      </h3>
       <div className="flex flex-wrap items-end gap-2">
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">
@@ -410,6 +574,21 @@ function CerrarCajaCard({
         >
           Cerrar caja
         </button>
+      </div>
+
+      <div
+        className={`mt-3 flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium ${
+          diferencia === 0
+            ? 'bg-emerald-100 text-emerald-800'
+            : diferencia > 0
+              ? 'bg-blue-100 text-blue-800'
+              : 'bg-red-100 text-red-800'
+        }`}
+      >
+        <Percent size={14} />
+        {diferencia === 0 && 'Cuadra exacto con lo esperado.'}
+        {diferencia > 0 && `Sobran ${formatoMoneda.format(diferencia)} frente a lo esperado.`}
+        {diferencia < 0 && `Faltan ${formatoMoneda.format(Math.abs(diferencia))} frente a lo esperado.`}
       </div>
     </div>
   )

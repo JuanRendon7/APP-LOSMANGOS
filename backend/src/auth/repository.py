@@ -16,6 +16,9 @@ class AuthRepository:
         )
         return self.db.scalar(stmt)
 
+    def obtener_por_cedula(self, cedula: str) -> Usuario | None:
+        return self.db.scalar(select(Usuario).where(Usuario.cedula == cedula))
+
     def obtener_por_id(self, id_usuario: int) -> Usuario | None:
         stmt = (
             select(Usuario)

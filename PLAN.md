@@ -170,6 +170,25 @@ dependencies.py # get_xxx_service(db=Depends(get_db))
    8 tests nuevos (58 total). Verificado end-to-end con Playwright (cobro de habitación,
    cobro de mesa, venta de mostrador con descuento de stock, gasto, cierre con
    diferencia $0).
+7.5. ~~**Gestión de usuarios (Administración → Usuarios)**~~ — DONE (2026-08-07). El
+   backend de usuarios/roles ya existía desde el Andamiaje (`GET/POST /usuarios`,
+   `PATCH /usuarios/{id}`, `GET /roles`, gateados con `requiere_rol("ADMINISTRADOR")`
+   directo, no con el sistema de permisos granular) pero sin frontend. Se agregó
+   `cedula` (única) y `celular` a `Usuario` (antes solo tenía nombre/email) — migración
+   con backfill (`cedula = 'PENDIENTE-' || id_usuario` para filas existentes, o sea el
+   admin sembrado; conviene editarlo desde la UI nueva para poner su cédula real).
+   Formulario de creación: nombre completo, cédula, celular, correo, clave de acceso,
+   y **un solo rol** (Administrador o Empleado — el backend soporta `roles: string[]`
+   pero la UI simplifica a selección única, que es como se usan los dos roles reales
+   del negocio). Autoprotección: un admin no puede desactivarse ni cambiarse el rol a
+   sí mismo desde el formulario (`esUsuarioActual`, controles deshabilitados). Sin
+   borrado — se desactiva con `activo` (mismo patrón que habitaciones/mesas/productos).
+   3 tests nuevos (65 total). **De paso se corrigió un descuido**: la página de
+   Reportes (fusionada con el antiguo "Resumen") estaba gateada con `RESERVAS:VER`
+   (que EMPLEADO sí tiene), cuando el recurso correcto — ya sembrado desde el
+   Andamiaje para exactamente este fin — es `REPORTES:VER` (solo ADMINISTRADOR). Se
+   corrigió en `App.tsx`/`AppShell.tsx` y "Reportes" se movió del grupo Operación al
+   grupo Administración del sidebar, junto con Tarifario y Usuarios.
 8. **Fase 8: Reportería**. Recurso ya sembrado: `REPORTES`.
 9. **Fase 9: Sincronización con Booking.com** (iCal). Ya existe
    `BOOKING_ICAL_TOKEN_SECRET` en la config del backend y la librería `icalendar` en
@@ -311,6 +330,45 @@ Detalles:
   abierto con {monto} en caja" en vez del CTA de apertura. La tarjeta de venta perdió
   su `<h1>Vender</h1>` (redundante con el saludo y con el título "Vender" que ya pone
   `AppShell` en la barra superior) y ahora dice "Nueva venta".
+- **Movimientos con producto + mejoras de Vender (2026-08-07)**: el usuario notó que
+  "Movimientos de este turno" mostraba el origen genérico ("Mostrador") en vez de qué
+  se vendió. Se invirtió la jerarquía: la línea principal ahora es el resumen de
+  productos (`2× Cerveza, 1× Bandeja de res`) y el origen quedó como contexto secundario
+  (`CONTEXTO_ORIGEN`: "Venta directa" / "Cobro de habitación" / "Cobro de mesa"),
+  sin la palabra "Mostrador" en ningún lado. De ahí salieron 4 mejoras adicionales,
+  elegidas por el usuario entre varias propuestas:
+  - **Total vendido del turno**: se lee directo de `turno.total_efectivo/tarjeta/
+    transferencia/qr` (ya calculados por el backend desde la Fase 7, sin llamada
+    nueva), mostrado en el header de "Movimientos de este turno". Requirió pasar el
+    objeto `turno` completo a `VentaMostrador` (antes solo recibía `idTurno`) y un
+    callback `onCambio` para que `VenderPage` refresque el turno después de cada venta.
+  - **Aviso de stock bajo**: al agregar un producto de bar (escaneado o manual), si
+    `stock - cantidad_ya_en_carrito - cantidad_agregada <= 5` se muestra un aviso en
+    ámbar. Es una estimación en cliente (no hay llamada al backend), calculada contra
+    el `stock` ya cargado en memoria.
+  - **Acceso directo a "Cerrar caja"**: link junto al saludo cuando hay turno abierto,
+    visible solo con `CAJA:CERRAR`, que navega a `/caja`.
+  - **Deshacer última venta** (requirió backend): nuevo endpoint
+    `POST /caja/ventas/deshacer-ultima` (`VENTAS:EDITAR`, o sea solo admin — mismo
+    criterio que el resto de correcciones en Caja) en `backend/src/caja/`. Solo permite
+    deshacer si la venta más reciente del turno es de origen `MOSTRADOR` (rechaza
+    cobros de habitación/mesa con 422 — revertir esos implicaría deshacer un
+    check-out o liberar una mesa, fuera de alcance). Restaura stock de bar si aplica
+    (reutiliza `ProductosService.ajustar_stock_bar`) y borra la `Venta` (se agregó
+    `cascade="all, delete-orphan"` a `Venta.items` en el modelo para que sus
+    `VentaItem` se borren en cascada sin necesitar una migración). 4 tests nuevos
+    (62 total). El botón solo aparece si el último movimiento es de origen mostrador.
+- **Fusión "Resumen" dentro de "Reportes" (2026-08-07)**: con "Vender" como landing
+  page, el dashboard "Resumen" perdía su rol de pantalla de bienvenida y quedaba
+  redundante con lo que ya se ve coloreado en Habitaciones/Bar/Restaurante — el usuario
+  lo notó y pidió fusionarlo. `frontend/src/features/dashboard/` se eliminó por
+  completo; su contenido (KPIs clickeables, gráficas de `recharts`) se movió arriba del
+  formulario de exportar CSV en `frontend/src/features/hospedaje/ReportesPage.tsx`, que
+  ya vivía ahí por ser el reporte de reservas. La ruta `/resumen` y el enlace "Resumen"
+  del sidebar se eliminaron (el sidebar de Operación bajó de 9 a 8 ítems). El botón "Ir
+  a Reportes" de la tarjeta de detalle de KPI para "Reservas activas" ya no tiene
+  sentido (es la misma página) y se quitó; los demás KPIs conservan su botón "Ir a
+  Habitaciones".
 - **No se retocaron** los colores de estado ya existentes en páginas de Fase 2-4
   (verde/azul/ámbar/rojo de habitaciones, verde/rojo de productos) — quedan con su
   paleta original de Tailwind, solo el shell/marca/dashboard usan los tokens nuevos.
@@ -361,9 +419,13 @@ Detalles:
 
 ## Estado de git al cerrar esta sesión
 
-Fases 0-3 están commiteadas y pusheadas a `origin/main` (commits `39decf7` y `d326aa5`).
-Fase 4 (productos), el rediseño visual (sidebar + marca + dashboard + reportes), la
-Fase 5 (mesas/pedidos/comanda), la Fase 6 (consumo a habitación) y la Fase 7 (caja) se
-construyeron y verificaron en esta sesión pero **no se han commiteado** — confirmar con
-el usuario antes de asumir su estado en la próxima sesión (`git log` y `git status` lo
-confirman rápido).
+Fases 0-3 en `39decf7`/`d326aa5`, y Fases 4-7 + rediseño visual + marca +
+Vender/escaneo de código de barras en `cfb4bff` — todo eso pusheado a `origin/main`.
+Después de ese commit se agregaron, **sin commitear todavía**: el ajuste de nitidez del
+fondo de marca, las mejoras de "Movimientos de este turno" (total del turno, aviso de
+stock bajo, acceso a cerrar caja, deshacer última venta — esto último con cambios de
+backend en `src/caja/`), la fusión de "Resumen" dentro de "Reportes", y la gestión de
+usuarios (`src/auth/` + `cedula`/`celular` en `Usuario` + migración +
+`features/usuarios/` en el frontend), incluyendo la corrección del gateo de Reportes a
+`REPORTES:VER`. `git log`/`git status` lo confirman rápido si hace falta verificar en
+la próxima sesión.

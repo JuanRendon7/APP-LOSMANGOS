@@ -1,0 +1,29 @@
+export type CodigoRol = 'ADMINISTRADOR' | 'EMPLEADO'
+
+export interface Usuario {
+  id_usuario: number
+  nombre: string
+  cedula: string
+  celular: string
+  email: string
+  activo: boolean
+  roles: string[]
+}
+
+export interface UsuarioCreateInput {
+  nombre: string
+  cedula: string
+  celular: string
+  email: string
+  password: string
+  roles: string[]
+}
+
+export interface UsuarioUpdateInput {
+  nombre?: string
+  cedula?: string
+  celular?: string
+  activo?: boolean
+  roles?: string[]
+  password?: string
+}

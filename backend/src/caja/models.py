@@ -73,7 +73,9 @@ class Venta(Base, TimestampMixin):
 
     turno: Mapped["TurnoCaja"] = relationship(back_populates="ventas")
     items: Mapped[list["VentaItem"]] = relationship(
-        back_populates="venta", order_by="VentaItem.id_venta_item"
+        back_populates="venta",
+        order_by="VentaItem.id_venta_item",
+        cascade="all, delete-orphan",
     )
 
 

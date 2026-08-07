@@ -48,9 +48,13 @@ class AuthService:
     def crear_usuario(self, datos: UsuarioCreate, creado_por: int | None) -> Usuario:
         if self.repository.obtener_por_email(datos.email) is not None:
             raise ConflictError("Ya existe un usuario con ese email")
+        if self.repository.obtener_por_cedula(datos.cedula) is not None:
+            raise ConflictError("Ya existe un usuario con esa cedula")
         roles = self._resolver_roles(datos.roles)
         usuario = Usuario(
             nombre=datos.nombre,
+            cedula=datos.cedula,
+            celular=datos.celular,
             email=datos.email,
             password_hash=hash_password(datos.password),
         )
@@ -65,6 +69,13 @@ class AuthService:
             raise NotFoundError("Usuario no encontrado")
         if datos.nombre is not None:
             usuario.nombre = datos.nombre
+        if datos.cedula is not None and datos.cedula != usuario.cedula:
+            existente = self.repository.obtener_por_cedula(datos.cedula)
+            if existente is not None and existente.id_usuario != id_usuario:
+                raise ConflictError("Ya existe un usuario con esa cedula")
+            usuario.cedula = datos.cedula
+        if datos.celular is not None:
+            usuario.celular = datos.celular
         if datos.activo is not None:
             usuario.activo = datos.activo
         if datos.password:

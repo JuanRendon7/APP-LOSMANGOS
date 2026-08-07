@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Beer, CircleCheck, Coins, PackageX, Search, TriangleAlert } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { AjustarStockModal } from './AjustarStockModal'
-import { listarProductosBar } from './api'
+import { actualizarProductoBar, listarProductosBar } from './api'
 import { ProductoBarFormModal } from './ProductoBarFormModal'
 import type { ProductoBar } from './types'
 
@@ -11,6 +12,14 @@ const formatoMoneda = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 0,
 })
 
+const STOCK_BAJO_UMBRAL = 5
+
+function estiloStock(stock: number): string {
+  if (stock <= 0) return 'bg-red-100 text-red-800'
+  if (stock <= STOCK_BAJO_UMBRAL) return 'bg-amber-100 text-amber-800'
+  return 'bg-emerald-100 text-emerald-800'
+}
+
 export function ProductosBarPage() {
   const { tienePermiso } = useAuth()
   const [productos, setProductos] = useState<ProductoBar[]>([])
@@ -19,6 +28,8 @@ export function ProductosBarPage() {
   const [editando, setEditando] = useState<ProductoBar | null>(null)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [ajustandoStock, setAjustandoStock] = useState<ProductoBar | null>(null)
+  const [busqueda, setBusqueda] = useState('')
+  const [soloActivos, setSoloActivos] = useState(false)
 
   const puedeGestionar = tienePermiso('PRODUCTOS_BAR', 'CREAR')
   const veCostos = tienePermiso('PRODUCTOS_BAR', 'VER_COSTOS')
@@ -39,13 +50,43 @@ export function ProductosBarPage() {
     recargar()
   }, [recargar])
 
+  const manejarToggleActivo = async (producto: ProductoBar) => {
+    setError(null)
+    try {
+      await actualizarProductoBar(producto.id_producto, { activo: !producto.activo })
+      await recargar()
+    } catch {
+      setError('No se pudo cambiar el estado del producto.')
+    }
+  }
+
+  const activos = productos.filter((p) => p.activo)
+  const stockBajo = productos.filter((p) => p.activo && p.stock <= STOCK_BAJO_UMBRAL)
+  const valorInventario = productos.reduce(
+    (suma, p) => suma + p.stock * (p.precio_costo ?? 0),
+    0,
+  )
+
+  const visibles = useMemo(() => {
+    const texto = busqueda.trim().toLowerCase()
+    return productos
+      .filter((p) => !soloActivos || p.activo)
+      .filter(
+        (p) =>
+          !texto ||
+          p.nombre.toLowerCase().includes(texto) ||
+          p.codigo_barras.toLowerCase().includes(texto),
+      )
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+  }, [productos, busqueda, soloActivos])
+
   if (cargando) {
     return <p className="text-sm text-muted-foreground">Cargando productos...</p>
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-lg font-semibold text-foreground">Productos · Bar</h1>
           <p className="text-sm text-muted-foreground">
@@ -67,6 +108,75 @@ export function ProductosBarPage() {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
+      <div className="flex flex-wrap gap-2">
+        <span className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground">
+          <Beer size={14} /> Total · {productos.length}
+        </span>
+        <button
+          onClick={() => setSoloActivos((valor) => !valor)}
+          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+            soloActivos
+              ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+              : 'border-border text-muted-foreground hover:bg-secondary'
+          }`}
+        >
+          <CircleCheck size={14} /> Activos · {activos.length}
+        </button>
+        <span
+          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${
+            stockBajo.length > 0
+              ? 'border-amber-300 bg-amber-50 text-amber-800'
+              : 'border-border text-muted-foreground'
+          }`}
+        >
+          <TriangleAlert size={14} /> Stock bajo · {stockBajo.length}
+        </span>
+        {veCostos && (
+          <span className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            <Coins size={14} /> Valor inventario · {formatoMoneda.format(valorInventario)}
+          </span>
+        )}
+      </div>
+
+      {stockBajo.length > 0 && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-800">
+            <TriangleAlert size={14} /> Productos con stock bajo
+          </div>
+          <ul className="flex flex-wrap gap-2">
+            {stockBajo.map((producto) => (
+              <li key={producto.id_producto}>
+                <button
+                  onClick={() => setAjustandoStock(producto)}
+                  className="flex items-center gap-1.5 rounded-md border border-amber-300 bg-white px-2.5 py-1 text-sm font-medium text-amber-900 hover:bg-amber-100"
+                >
+                  {producto.stock <= 0 ? (
+                    <PackageX size={14} className="text-red-600" />
+                  ) : (
+                    <TriangleAlert size={14} />
+                  )}
+                  {producto.nombre} · {producto.stock} und.
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="relative max-w-sm">
+        <Search
+          size={16}
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
+        <input
+          type="text"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre o codigo..."
+          className="w-full rounded-md border border-input bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead className="bg-secondary text-left text-xs uppercase text-muted-foreground">
@@ -77,15 +187,26 @@ export function ProductosBarPage() {
               {veCostos && <th className="px-3 py-2">Costo</th>}
               {veCostos && <th className="px-3 py-2">Margen</th>}
               <th className="px-3 py-2">Stock</th>
-              <th className="px-3 py-2">Activo</th>
+              <th className="px-3 py-2">Estado</th>
               {puedeGestionar && <th className="px-3 py-2" />}
             </tr>
           </thead>
           <tbody>
-            {productos.map((producto) => (
-              <tr key={producto.id_producto} className="border-t border-border">
-                <td className="px-3 py-2 text-foreground">{producto.nombre}</td>
-                <td className="px-3 py-2 text-muted-foreground">{producto.codigo_barras}</td>
+            {visibles.map((producto) => (
+              <tr key={producto.id_producto} className="border-t border-border hover:bg-secondary/40">
+                <td className="px-3 py-2 text-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-primary">
+                      <Beer size={14} />
+                    </div>
+                    <span className={producto.activo ? '' : 'text-muted-foreground'}>
+                      {producto.nombre}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                  {producto.codigo_barras}
+                </td>
                 <td className="px-3 py-2 text-foreground">
                   {formatoMoneda.format(producto.precio_venta)}
                 </td>
@@ -103,35 +224,62 @@ export function ProductosBarPage() {
                       : '—'}
                   </td>
                 )}
-                <td className="px-3 py-2 text-foreground">{producto.stock}</td>
-                <td className="px-3 py-2 text-muted-foreground">
-                  {producto.activo ? 'Si' : 'No'}
+                <td className="px-3 py-2">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${estiloStock(producto.stock)}`}
+                  >
+                    {producto.stock} und.
+                  </span>
+                </td>
+                <td className="px-3 py-2">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      producto.activo
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {producto.activo ? 'Activo' : 'Inactivo'}
+                  </span>
                 </td>
                 {puedeGestionar && (
                   <td className="px-3 py-2 text-right">
-                    <button
-                      onClick={() => {
-                        setEditando(producto)
-                        setMostrarForm(true)
-                      }}
-                      className="mr-3 text-xs font-medium text-foreground hover:underline"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => setAjustandoStock(producto)}
-                      className="text-xs font-medium text-foreground hover:underline"
-                    >
-                      Ajustar stock
-                    </button>
+                    <div className="flex flex-wrap justify-end gap-x-3 gap-y-1">
+                      <button
+                        onClick={() => {
+                          setEditando(producto)
+                          setMostrarForm(true)
+                        }}
+                        className="text-xs font-medium text-foreground hover:underline"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => setAjustandoStock(producto)}
+                        className="text-xs font-medium text-foreground hover:underline"
+                      >
+                        Ajustar stock
+                      </button>
+                      <button
+                        onClick={() => manejarToggleActivo(producto)}
+                        className="text-xs font-medium text-muted-foreground hover:underline"
+                      >
+                        {producto.activo ? 'Desactivar' : 'Activar'}
+                      </button>
+                    </div>
                   </td>
                 )}
               </tr>
             ))}
-            {productos.length === 0 && (
+            {visibles.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
-                  No hay productos creados todavia.
+                <td
+                  colSpan={5 + (veCostos ? 2 : 0) + (puedeGestionar ? 1 : 0)}
+                  className="px-3 py-6 text-center text-muted-foreground"
+                >
+                  {productos.length === 0
+                    ? 'No hay productos creados todavia.'
+                    : 'Ningun producto coincide con la busqueda.'}
                 </td>
               </tr>
             )}

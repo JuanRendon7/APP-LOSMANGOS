@@ -1,9 +1,16 @@
 import { Barcode, Wallet } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { listarProductosBar, listarProductosRestaurante } from '@/features/productos/api'
 import type { ProductoBar, ProductoRestaurante } from '@/features/productos/types'
 import { useAuth } from '@/shared/auth/AuthContext'
-import { abrirTurno, listarVentas, obtenerTurnoActual, ventaMostrador } from './api'
+import {
+  abrirTurno,
+  deshacerUltimaVenta,
+  listarVentas,
+  obtenerTurnoActual,
+  ventaMostrador,
+} from './api'
 import type {
   MetodoPago,
   OrigenVenta,
@@ -12,6 +19,8 @@ import type {
   Venta,
   VentaMostradorItemInput,
 } from './types'
+
+const STOCK_BAJO_UMBRAL = 5
 
 const formatoMoneda = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -27,10 +36,10 @@ const ETIQUETA_METODO: Record<MetodoPago, string> = {
   QR: 'QR',
 }
 
-const ETIQUETA_ORIGEN: Record<OrigenVenta, string> = {
-  HABITACION: 'Habitacion',
-  MESA: 'Mesa',
-  MOSTRADOR: 'Mostrador',
+const CONTEXTO_ORIGEN: Record<OrigenVenta, string> = {
+  HABITACION: 'Cobro de habitacion',
+  MESA: 'Cobro de mesa',
+  MOSTRADOR: 'Venta directa',
 }
 
 const formatoHora = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' })
@@ -42,11 +51,13 @@ interface ItemCarrito extends VentaMostradorItemInput {
 
 export function VenderPage() {
   const { usuario, tienePermiso } = useAuth()
+  const navigate = useNavigate()
   const [turno, setTurno] = useState<TurnoCaja | null | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
 
   const puedeAbrir = tienePermiso('CAJA', 'CREAR')
   const puedeVender = tienePermiso('VENTAS', 'CREAR')
+  const puedeCerrar = tienePermiso('CAJA', 'CERRAR')
   const primerNombre = usuario?.nombre.split(' ')[0]
 
   const cargarTurno = useCallback(async () => {
@@ -90,16 +101,26 @@ export function VenderPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-lg font-semibold text-foreground">
-          Bienvenido de nuevo, {primerNombre}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Turno abierto con {formatoMoneda.format(turno.monto_apertura)} en caja.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">
+            Bienvenido de nuevo, {primerNombre}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Turno abierto con {formatoMoneda.format(turno.monto_apertura)} en caja.
+          </p>
+        </div>
+        {puedeCerrar && (
+          <button
+            onClick={() => navigate('/caja')}
+            className="shrink-0 text-sm font-medium text-primary hover:underline"
+          >
+            Cerrar caja →
+          </button>
+        )}
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <VentaMostrador idTurno={turno.id_turno} setError={setError} />
+      <VentaMostrador turno={turno} onCambio={cargarTurno} setError={setError} />
     </div>
   )
 }
@@ -177,12 +198,16 @@ function AbrirCajaInline({
 }
 
 function VentaMostrador({
-  idTurno,
+  turno,
+  onCambio,
   setError,
 }: {
-  idTurno: number
+  turno: TurnoCaja
+  onCambio: () => Promise<void> | void
   setError: (msg: string | null) => void
 }) {
+  const { tienePermiso } = useAuth()
+  const idTurno = turno.id_turno
   const [productosBar, setProductosBar] = useState<ProductoBar[]>([])
   const [productosRestaurante, setProductosRestaurante] = useState<ProductoRestaurante[]>([])
   const [origen, setOrigen] = useState<OrigenVentaMostrador>('BAR')
@@ -194,8 +219,21 @@ function VentaMostrador({
   const [confirmacion, setConfirmacion] = useState<string | null>(null)
   const [codigoBarras, setCodigoBarras] = useState('')
   const [errorEscaneo, setErrorEscaneo] = useState<string | null>(null)
+  const [avisoStock, setAvisoStock] = useState<string | null>(null)
   const [movimientos, setMovimientos] = useState<Venta[]>([])
+  const [deshaciendo, setDeshaciendo] = useState(false)
   const inputBarcodeRef = useRef<HTMLInputElement>(null)
+
+  const puedeDeshacer = tienePermiso('VENTAS', 'EDITAR')
+
+  const cargarProductos = useCallback(async () => {
+    const [bar, restaurante] = await Promise.all([
+      listarProductosBar(),
+      listarProductosRestaurante(),
+    ])
+    setProductosBar(bar.filter((p) => p.activo))
+    setProductosRestaurante(restaurante.filter((p) => p.activo))
+  }, [])
 
   const cargarMovimientos = useCallback(async () => {
     try {
@@ -207,13 +245,8 @@ function VentaMostrador({
   }, [idTurno, setError])
 
   useEffect(() => {
-    Promise.all([listarProductosBar(), listarProductosRestaurante()]).then(
-      ([bar, restaurante]) => {
-        setProductosBar(bar.filter((p) => p.activo))
-        setProductosRestaurante(restaurante.filter((p) => p.activo))
-      },
-    )
-  }, [])
+    cargarProductos()
+  }, [cargarProductos])
 
   useEffect(() => {
     cargarMovimientos()
@@ -235,6 +268,16 @@ function VentaMostrador({
       const indiceExistente = prev.findIndex(
         (item) => item.origen === origenProducto && item.id_producto === producto.id_producto,
       )
+      const yaEnCarrito =
+        indiceExistente >= 0 ? prev[indiceExistente].cantidad : 0
+      if (origenProducto === 'BAR' && 'stock' in producto) {
+        const restante = producto.stock - yaEnCarrito - cantidadAgregar
+        setAvisoStock(
+          restante <= STOCK_BAJO_UMBRAL
+            ? `Quedan pocas unidades de "${producto.nombre}" (${Math.max(restante, 0)}).`
+            : null,
+        )
+      }
       if (indiceExistente >= 0) {
         const copia = [...prev]
         copia[indiceExistente] = {
@@ -300,14 +343,33 @@ function VentaMostrador({
         metodoPago,
       )
       setCarrito([])
+      setAvisoStock(null)
       setConfirmacion(`Venta cobrada: ${formatoMoneda.format(total)}`)
-      await cargarMovimientos()
+      await Promise.all([cargarMovimientos(), cargarProductos(), onCambio()])
     } catch {
       setError('No se pudo registrar la venta.')
     } finally {
       setProcesando(false)
     }
   }
+
+  const manejarDeshacer = async () => {
+    setError(null)
+    setConfirmacion(null)
+    setDeshaciendo(true)
+    try {
+      await deshacerUltimaVenta()
+      await Promise.all([cargarMovimientos(), cargarProductos(), onCambio()])
+    } catch {
+      setError('No se pudo deshacer la ultima venta.')
+    } finally {
+      setDeshaciendo(false)
+    }
+  }
+
+  const totalVendidoTurno =
+    turno.total_efectivo + turno.total_tarjeta + turno.total_transferencia + turno.total_qr
+  const ultimoMovimiento = movimientos[0]
 
   return (
     <div className="space-y-4">
@@ -370,6 +432,9 @@ function VentaMostrador({
               Agregar
             </button>
           </div>
+          {avisoStock && (
+            <p className="mt-2 text-xs font-medium text-amber-600">{avisoStock}</p>
+          )}
         </div>
 
         <div className="rounded-lg border border-border bg-card p-4">
@@ -425,29 +490,49 @@ function VentaMostrador({
       </div>
 
       <div className="rounded-lg border border-border bg-card p-4">
-        <h2 className="mb-3 font-semibold text-card-foreground">Movimientos de este turno</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="font-semibold text-card-foreground">Movimientos de este turno</h2>
+            <p className="text-xs text-muted-foreground">
+              Total vendido: {formatoMoneda.format(totalVendidoTurno)}
+            </p>
+          </div>
+          {puedeDeshacer && ultimoMovimiento?.origen === 'MOSTRADOR' && (
+            <button
+              onClick={manejarDeshacer}
+              disabled={deshaciendo}
+              className="text-xs font-medium text-destructive hover:underline disabled:opacity-50"
+            >
+              {deshaciendo ? 'Deshaciendo...' : 'Deshacer ultima venta'}
+            </button>
+          )}
+        </div>
         <ul className="space-y-1 text-sm">
-          {movimientos.map((venta) => (
-            <li key={venta.id_venta} className="rounded-md px-2 py-1.5 odd:bg-muted/40">
-              <div className="flex items-center justify-between gap-2">
-                <span>
-                  {formatoHora.format(new Date(venta.creado_en))} ·{' '}
-                  {ETIQUETA_ORIGEN[venta.origen]}
-                </span>
-                <span className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
-                  {ETIQUETA_METODO[venta.metodo_pago]}
-                  <span className="text-sm font-medium text-foreground">
-                    {formatoMoneda.format(venta.monto)}
+          {movimientos.map((venta) => {
+            const contexto = CONTEXTO_ORIGEN[venta.origen]
+            const resumenProductos =
+              venta.items.length > 0
+                ? venta.items.map((item) => `${item.cantidad}× ${item.nombre_producto}`).join(', ')
+                : null
+            return (
+              <li key={venta.id_venta} className="rounded-md px-2 py-1.5 odd:bg-muted/40">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate font-medium text-foreground">
+                    {resumenProductos ?? contexto}
                   </span>
-                </span>
-              </div>
-              <p className="truncate text-xs text-muted-foreground">
-                {venta.items.length > 0
-                  ? venta.items.map((item) => `${item.cantidad}× ${item.nombre_producto}`).join(', ')
-                  : 'Sin detalle de productos'}
-              </p>
-            </li>
-          ))}
+                  <span className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+                    {ETIQUETA_METODO[venta.metodo_pago]}
+                    <span className="text-sm font-medium text-foreground">
+                      {formatoMoneda.format(venta.monto)}
+                    </span>
+                  </span>
+                </div>
+                <p className="truncate text-xs text-muted-foreground">
+                  {formatoHora.format(new Date(venta.creado_en))} · {contexto}
+                </p>
+              </li>
+            )
+          })}
           {movimientos.length === 0 && (
             <li className="text-sm text-muted-foreground">Sin movimientos todavia.</li>
           )}

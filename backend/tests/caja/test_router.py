@@ -276,3 +276,83 @@ def test_empleado_puede_crear_gasto_pero_no_editarlo_ni_eliminarlo(
 
     eliminar = client.delete(f"/caja/gastos/{id_gasto}", headers=headers_empleado)
     assert eliminar.status_code == 403
+
+
+def test_deshacer_ultima_venta_mostrador_restaura_stock(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers)
+    producto = _crear_producto_bar(client, headers, "9200001", stock=10)
+
+    venta = client.post(
+        "/caja/ventas/mostrador",
+        headers=headers,
+        json={
+            "items": [
+                {"origen": "BAR", "id_producto": producto["id_producto"], "cantidad": 3}
+            ],
+            "metodo_pago": "EFECTIVO",
+        },
+    )
+    assert venta.status_code == 201, venta.text
+    id_venta = venta.json()["id_venta"]
+
+    deshacer = client.post("/caja/ventas/deshacer-ultima", headers=headers)
+    assert deshacer.status_code == 200, deshacer.text
+    assert deshacer.json()["id_venta"] == id_venta
+
+    productos_bar = client.get("/productos-bar", headers=headers).json()
+    actualizado = next(
+        p for p in productos_bar if p["id_producto"] == producto["id_producto"]
+    )
+    assert actualizado["stock"] == 10
+
+    id_turno = venta.json()["id_turno_caja"]
+    listado = client.get(
+        "/caja/ventas", headers=headers, params={"id_turno": id_turno}
+    )
+    assert all(v["id_venta"] != id_venta for v in listado.json())
+
+
+def test_deshacer_ultima_venta_sin_ventas_falla(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers)
+
+    deshacer = client.post("/caja/ventas/deshacer-ultima", headers=headers)
+    assert deshacer.status_code == 422
+
+
+def test_deshacer_ultima_venta_rechaza_cobro_de_habitacion(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers)
+    reserva = _crear_reserva_con_checkin(client, headers, "102", "1300000001")
+
+    venta = client.post(
+        "/caja/ventas/habitacion",
+        headers=headers,
+        json={"id_reserva": reserva["id_reserva"], "metodo_pago": "EFECTIVO"},
+    )
+    assert venta.status_code == 201, venta.text
+
+    deshacer = client.post("/caja/ventas/deshacer-ultima", headers=headers)
+    assert deshacer.status_code == 422
+
+
+def test_empleado_no_puede_deshacer_venta(client, usuario_admin, usuario_empleado):
+    headers_empleado = auth_headers(token_para(client, usuario_empleado.email))
+    _abrir_turno(client, headers_empleado)
+    producto = _crear_producto_bar(
+        client, auth_headers(token_para(client, usuario_admin.email)), "9200002"
+    )
+    client.post(
+        "/caja/ventas/mostrador",
+        headers=headers_empleado,
+        json={
+            "items": [
+                {"origen": "BAR", "id_producto": producto["id_producto"], "cantidad": 1}
+            ],
+            "metodo_pago": "EFECTIVO",
+        },
+    )
+
+    deshacer = client.post("/caja/ventas/deshacer-ultima", headers=headers_empleado)
+    assert deshacer.status_code == 403

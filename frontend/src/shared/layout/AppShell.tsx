@@ -2,13 +2,13 @@ import {
   BedDouble,
   Beer,
   ClipboardList,
-  Home,
   LayoutGrid,
   LogOut,
   Menu,
   PanelLeft,
   ShoppingCart,
   Tag,
+  Users,
   UtensilsCrossed,
   Wallet,
   type LucideIcon,
@@ -37,10 +37,14 @@ const GRUPOS: Grupo[] = [
     titulo: 'Operación',
     enlaces: [
       { to: '/', label: 'Vender', recurso: 'VENTAS', icon: ShoppingCart },
-      { to: '/resumen', label: 'Resumen', recurso: null, icon: Home },
       { to: '/habitaciones', label: 'Habitaciones', recurso: 'HABITACIONES', icon: BedDouble },
-      { to: '/reportes', label: 'Reportes', recurso: 'RESERVAS', icon: ClipboardList },
       { to: '/restaurante/mesas', label: 'Mesas', recurso: 'MESAS', icon: LayoutGrid },
+      { to: '/caja', label: 'Caja', recurso: 'CAJA', icon: Wallet },
+    ],
+  },
+  {
+    titulo: 'Maestros',
+    enlaces: [
       {
         to: '/productos/restaurante',
         label: 'Restaurante',
@@ -48,18 +52,20 @@ const GRUPOS: Grupo[] = [
         icon: UtensilsCrossed,
       },
       { to: '/productos/bar', label: 'Bar', recurso: 'PRODUCTOS_BAR', icon: Beer },
-      { to: '/caja', label: 'Caja', recurso: 'CAJA', icon: Wallet },
+      { to: '/tarifario', label: 'Tarifario', recurso: 'TARIFAS', icon: Tag },
     ],
   },
   {
     titulo: 'Administración',
-    enlaces: [{ to: '/tarifario', label: 'Tarifario', recurso: 'TARIFAS', icon: Tag }],
+    enlaces: [
+      { to: '/reportes', label: 'Reportes', recurso: 'REPORTES', icon: ClipboardList },
+      { to: '/usuarios', label: 'Usuarios', recurso: 'USUARIOS', icon: Users },
+    ],
   },
 ]
 
 const TITULOS_PAGINA: Record<string, string> = {
   '/': 'Vender',
-  '/resumen': 'Resumen',
   '/habitaciones': 'Habitaciones',
   '/reportes': 'Reportes',
   '/restaurante/mesas': 'Mesas',
@@ -67,6 +73,7 @@ const TITULOS_PAGINA: Record<string, string> = {
   '/productos/bar': 'Bar',
   '/tarifario': 'Tarifario',
   '/caja': 'Caja',
+  '/usuarios': 'Usuarios',
 }
 
 export function AppShell({ children }: { children: ReactNode }) {

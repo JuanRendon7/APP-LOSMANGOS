@@ -93,3 +93,8 @@ export async function listarVentas(idTurno: number, origen?: OrigenVenta): Promi
   })
   return data
 }
+
+export async function deshacerUltimaVenta(): Promise<Venta> {
+  const { data } = await apiClient.post<Venta>('/caja/ventas/deshacer-ultima')
+  return data
+}

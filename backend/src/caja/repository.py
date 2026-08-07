@@ -108,3 +108,6 @@ class CajaRepository:
         self.db.add(item)
         self.db.flush()
         return item
+
+    def eliminar_venta(self, venta: Venta) -> None:
+        self.db.delete(venta)

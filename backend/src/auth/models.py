@@ -11,6 +11,8 @@ class Usuario(Base, TimestampMixin):
 
     id_usuario: Mapped[int] = mapped_column(primary_key=True)
     nombre: Mapped[str] = mapped_column(String(150))
+    cedula: Mapped[str] = mapped_column(String(20), unique=True)
+    celular: Mapped[str] = mapped_column(String(20))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     activo: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))

@@ -51,7 +51,7 @@ const CONFIG_VISUAL: Record<EstadoVisual, VisualConfig> = {
     label: 'Servido · por cobrar',
     icon: Receipt,
     marcador: 'border-primary bg-primary text-primary-foreground',
-    badge: 'bg-orange-100 text-orange-800',
+    badge: 'bg-marca-200 text-marca-800',
   },
 }
 
@@ -170,7 +170,7 @@ export function MapaMesasPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h1 className="text-lg font-semibold text-foreground">Mesas</h1>
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">Mesas</h1>
           <p className="text-sm text-muted-foreground">
             {mesas.length} mesas · {conteos.LIBRE} libres · {mesas.length - conteos.LIBRE} ocupadas
           </p>

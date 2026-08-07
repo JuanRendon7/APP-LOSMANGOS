@@ -356,3 +356,78 @@ def test_empleado_no_puede_deshacer_venta(client, usuario_admin, usuario_emplead
 
     deshacer = client.post("/caja/ventas/deshacer-ultima", headers=headers_empleado)
     assert deshacer.status_code == 403
+
+
+def test_venta_item_incluye_origen_de_producto(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers)
+    producto = _crear_producto_bar(client, headers, "9300001", stock=10)
+
+    venta = client.post(
+        "/caja/ventas/mostrador",
+        headers=headers,
+        json={
+            "items": [
+                {"origen": "BAR", "id_producto": producto["id_producto"], "cantidad": 1}
+            ],
+            "metodo_pago": "EFECTIVO",
+        },
+    )
+    assert venta.status_code == 201, venta.text
+    item = venta.json()["items"][0]
+    assert item["id_producto_bar"] == producto["id_producto"]
+    assert item["id_producto_restaurante"] is None
+
+
+def test_listar_ventas_filtra_por_rango_de_fechas(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    turno = _abrir_turno(client, headers)
+    producto = _crear_producto_bar(client, headers, "9300002", stock=10)
+    client.post(
+        "/caja/ventas/mostrador",
+        headers=headers,
+        json={
+            "items": [
+                {"origen": "BAR", "id_producto": producto["id_producto"], "cantidad": 1}
+            ],
+            "metodo_pago": "EFECTIVO",
+        },
+    )
+
+    hoy = date.today().isoformat()
+    dentro_de_rango = client.get(
+        "/caja/ventas",
+        headers=headers,
+        params={"id_turno": turno["id_turno"], "desde": hoy, "hasta": hoy},
+    )
+    assert len(dentro_de_rango.json()) == 1
+
+    manana = date(2099, 1, 1).isoformat()
+    fuera_de_rango = client.get(
+        "/caja/ventas",
+        headers=headers,
+        params={"id_turno": turno["id_turno"], "desde": manana},
+    )
+    assert fuera_de_rango.json() == []
+
+
+def test_listar_turnos_filtra_por_rango_de_fechas(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers)
+    params_base = {"id_usuario": usuario_admin.id_usuario}
+
+    hoy = date.today().isoformat()
+    dentro_de_rango = client.get(
+        "/caja/turnos",
+        headers=headers,
+        params={**params_base, "desde": hoy, "hasta": hoy},
+    )
+    assert len(dentro_de_rango.json()) == 1
+
+    ayer = date(2020, 1, 1).isoformat()
+    fuera_de_rango = client.get(
+        "/caja/turnos",
+        headers=headers,
+        params={**params_base, "desde": ayer, "hasta": ayer},
+    )
+    assert fuera_de_rango.json() == []

@@ -80,7 +80,7 @@ export function VenderPage() {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-6">
         <div className="text-center">
-          <h1 className="text-xl font-semibold text-foreground">
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
             Bienvenido de nuevo, {primerNombre}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -103,7 +103,7 @@ export function VenderPage() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-lg font-semibold text-foreground">
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
             Bienvenido de nuevo, {primerNombre}
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -169,7 +169,7 @@ function AbrirCajaInline({
         <Wallet size={26} />
       </div>
       <div>
-        <h2 className="text-base font-semibold text-foreground">Abre tu caja para empezar</h2>
+        <h2 className="font-serif text-xl font-semibold text-foreground">Abre tu caja para empezar</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Registra el efectivo con el que arrancas el turno.
         </p>
@@ -237,7 +237,7 @@ function VentaMostrador({
 
   const cargarMovimientos = useCallback(async () => {
     try {
-      const datos = await listarVentas(idTurno)
+      const datos = await listarVentas({ idTurno })
       setMovimientos(datos)
     } catch {
       setError('No se pudieron cargar los movimientos del turno.')
@@ -375,7 +375,7 @@ function VentaMostrador({
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
         <div className="rounded-lg border border-border bg-card p-4">
-          <h2 className="mb-3 font-semibold text-card-foreground">Nueva venta</h2>
+          <h2 className="mb-3 font-serif text-lg font-semibold text-card-foreground">Nueva venta</h2>
 
           <label className="mb-1 block text-xs font-medium text-muted-foreground">
             Escanear codigo de barras
@@ -438,7 +438,7 @@ function VentaMostrador({
         </div>
 
         <div className="rounded-lg border border-border bg-card p-4">
-          <h2 className="mb-3 font-semibold text-card-foreground">Carrito</h2>
+          <h2 className="mb-3 font-serif text-lg font-semibold text-card-foreground">Carrito</h2>
           {confirmacion && (
             <p className="mb-2 rounded-md bg-primary/10 px-2 py-1 text-sm text-primary">
               {confirmacion}
@@ -492,7 +492,7 @@ function VentaMostrador({
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="font-semibold text-card-foreground">Movimientos de este turno</h2>
+            <h2 className="font-serif text-lg font-semibold text-card-foreground">Movimientos de este turno</h2>
             <p className="text-xs text-muted-foreground">
               Total vendido: {formatoMoneda.format(totalVendidoTurno)}
             </p>

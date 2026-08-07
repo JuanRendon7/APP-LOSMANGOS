@@ -54,7 +54,7 @@ export function UsuariosPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-foreground">Usuarios</h1>
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">Usuarios</h1>
           <p className="text-sm text-muted-foreground">
             Crea y administra las cuentas del equipo (rol Administrador o Empleado).
           </p>

@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
@@ -69,6 +71,8 @@ def _venta_response(venta: Venta) -> VentaResponse:
             VentaItemResponse(
                 id_venta_item=item.id_venta_item,
                 nombre_producto=item.nombre_producto,
+                id_producto_bar=item.id_producto_bar,
+                id_producto_restaurante=item.id_producto_restaurante,
                 cantidad=item.cantidad,
                 precio_unitario=item.precio_unitario,
             )
@@ -93,10 +97,15 @@ def turno_actual(
 def listar_turnos(
     id_usuario: int | None = Query(default=None),
     estado: str | None = Query(default=None),
+    desde: date | None = Query(default=None),
+    hasta: date | None = Query(default=None),
     servicio: CajaService = Depends(get_caja_service),
     _: UsuarioActual = Depends(requiere_permiso("CAJA", "VER")),
 ):
-    return [_turno_response(t) for t in servicio.listar_turnos(id_usuario, estado)]
+    return [
+        _turno_response(t)
+        for t in servicio.listar_turnos(id_usuario, estado, desde, hasta)
+    ]
 
 
 @turnos_router.post(
@@ -223,10 +232,12 @@ def listar_ventas(
     id_turno: int | None = Query(default=None),
     metodo_pago: str | None = Query(default=None),
     origen: str | None = Query(default=None),
+    desde: date | None = Query(default=None),
+    hasta: date | None = Query(default=None),
     servicio: CajaService = Depends(get_caja_service),
     _: UsuarioActual = Depends(requiere_permiso("VENTAS", "VER")),
 ):
-    ventas = servicio.listar_ventas(id_turno, metodo_pago, origen)
+    ventas = servicio.listar_ventas(id_turno, metodo_pago, origen, desde, hasta)
     return [_venta_response(v) for v in ventas]
 
 

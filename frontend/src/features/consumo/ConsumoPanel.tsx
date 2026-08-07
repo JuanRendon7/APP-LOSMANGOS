@@ -183,7 +183,7 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
         <p className="text-muted-foreground">
           Consumo: {formatoMoneda.format(resumen.total)}
         </p>
-        <p className="font-semibold text-foreground">
+        <p className="font-serif text-lg font-semibold text-foreground">
           Total: {formatoMoneda.format(totalGeneral)}
         </p>
       </div>

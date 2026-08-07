@@ -1,5 +1,6 @@
 import { apiClient } from '@/shared/api/client'
 import type {
+  EstadoTurno,
   Gasto,
   MetodoPago,
   OrigenVenta,
@@ -87,14 +88,43 @@ export async function ventaMostrador(
   return data
 }
 
-export async function listarVentas(idTurno: number, origen?: OrigenVenta): Promise<Venta[]> {
+export async function listarVentas(params: {
+  idTurno?: number
+  metodoPago?: MetodoPago
+  origen?: OrigenVenta
+  desde?: string
+  hasta?: string
+}): Promise<Venta[]> {
   const { data } = await apiClient.get<Venta[]>('/caja/ventas', {
-    params: { id_turno: idTurno, origen },
+    params: {
+      id_turno: params.idTurno,
+      metodo_pago: params.metodoPago,
+      origen: params.origen,
+      desde: params.desde,
+      hasta: params.hasta,
+    },
   })
   return data
 }
 
 export async function deshacerUltimaVenta(): Promise<Venta> {
   const { data } = await apiClient.post<Venta>('/caja/ventas/deshacer-ultima')
+  return data
+}
+
+export async function listarTurnos(params: {
+  idUsuario?: number
+  estado?: EstadoTurno
+  desde?: string
+  hasta?: string
+}): Promise<TurnoCaja[]> {
+  const { data } = await apiClient.get<TurnoCaja[]>('/caja/turnos', {
+    params: {
+      id_usuario: params.idUsuario,
+      estado: params.estado,
+      desde: params.desde,
+      hasta: params.hasta,
+    },
+  })
   return data
 }

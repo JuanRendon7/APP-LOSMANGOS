@@ -102,7 +102,7 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
     return (
       <div className="rounded-lg border border-border bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-semibold text-card-foreground">{mesa.nombre}</h3>
+          <h3 className="font-serif text-lg font-semibold text-card-foreground">{mesa.nombre}</h3>
           <button onClick={onCerrar} className="text-xs text-muted-foreground hover:underline">
             Cerrar
           </button>
@@ -128,7 +128,7 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-card-foreground">{mesa.nombre}</h3>
+          <h3 className="font-serif text-lg font-semibold text-card-foreground">{mesa.nombre}</h3>
           <p className="text-xs text-muted-foreground">{ESTADO_LABELS[pedido.estado]}</p>
         </div>
         <button onClick={onCerrar} className="text-xs text-muted-foreground hover:underline">
@@ -170,7 +170,7 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
         )}
       </ul>
 
-      <p className="mb-3 text-sm font-semibold text-foreground">
+      <p className="mb-3 font-serif text-xl font-semibold text-foreground">
         Total: {formatoMoneda.format(pedido.total)}
       </p>
 

@@ -1,7 +1,17 @@
+from datetime import UTC, date, datetime, time
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from src.caja.models import Gasto, TurnoCaja, Venta, VentaItem
+
+
+def _inicio_dia(dia: date) -> datetime:
+    return datetime.combine(dia, time.min, tzinfo=UTC)
+
+
+def _fin_dia(dia: date) -> datetime:
+    return datetime.combine(dia, time.max, tzinfo=UTC)
 
 
 class CajaRepository:
@@ -33,7 +43,11 @@ class CajaRepository:
         return self.db.scalar(stmt)
 
     def listar_turnos(
-        self, id_usuario: int | None, estado: str | None
+        self,
+        id_usuario: int | None,
+        estado: str | None,
+        desde: date | None = None,
+        hasta: date | None = None,
     ) -> list[TurnoCaja]:
         stmt = select(TurnoCaja).options(
             selectinload(TurnoCaja.ventas), selectinload(TurnoCaja.gastos)
@@ -42,6 +56,10 @@ class CajaRepository:
             stmt = stmt.where(TurnoCaja.id_usuario == id_usuario)
         if estado is not None:
             stmt = stmt.where(TurnoCaja.estado == estado)
+        if desde is not None:
+            stmt = stmt.where(TurnoCaja.creado_en >= _inicio_dia(desde))
+        if hasta is not None:
+            stmt = stmt.where(TurnoCaja.creado_en <= _fin_dia(hasta))
         return list(self.db.scalars(stmt.order_by(TurnoCaja.creado_en.desc())))
 
     def crear_turno(self, turno: TurnoCaja) -> TurnoCaja:
@@ -86,6 +104,8 @@ class CajaRepository:
         id_turno: int | None,
         metodo_pago: str | None,
         origen: str | None,
+        desde: date | None = None,
+        hasta: date | None = None,
     ) -> list[Venta]:
         stmt = select(Venta).options(
             selectinload(Venta.items).selectinload(VentaItem.producto_bar),
@@ -97,6 +117,10 @@ class CajaRepository:
             stmt = stmt.where(Venta.metodo_pago == metodo_pago)
         if origen is not None:
             stmt = stmt.where(Venta.origen == origen)
+        if desde is not None:
+            stmt = stmt.where(Venta.creado_en >= _inicio_dia(desde))
+        if hasta is not None:
+            stmt = stmt.where(Venta.creado_en <= _fin_dia(hasta))
         return list(self.db.scalars(stmt.order_by(Venta.creado_en.desc())))
 
     def crear_venta(self, venta: Venta) -> Venta:

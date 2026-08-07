@@ -42,18 +42,25 @@ export function LoginPage() {
     <div className="relative flex min-h-dvh items-center justify-center px-4">
       <BrandBackdrop opacidadImagen={0.6} opacidadVelo={0.32} desenfoquePx={2} />
 
-      <div className="relative w-full max-w-sm rounded-xl border border-border bg-card/90 p-8">
-        <div className="mb-6 flex flex-col items-center text-center">
-          <MangoIcon size={40} className="mb-3 text-primary" />
-          <h1 className="text-xl font-bold tracking-tight text-card-foreground">
+      <div className="relative w-full max-w-sm rounded-2xl border border-marca-200/70 bg-card/95 p-10 shadow-xl shadow-marca-900/10 backdrop-blur-sm">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <MangoIcon size={44} className="mb-4 text-primary" />
+          <h1 className="font-serif text-3xl font-semibold tracking-tight text-card-foreground">
             Hotel Los Mangos
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Ingresa a tu cuenta</p>
+          <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.25em] text-muted-foreground">
+            Hotel &amp; Restaurante
+          </p>
+          <div className="mt-5 h-px w-12 bg-oro-500" />
+          <p className="mt-5 text-sm text-muted-foreground">Ingresa a tu cuenta para continuar</p>
         </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div>
-            <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">
+            <label
+              htmlFor="email"
+              className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+            >
               Correo
             </label>
             <Controller
@@ -65,17 +72,20 @@ export function LoginPage() {
                   id="email"
                   type="email"
                   autoComplete="username"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full border-b-2 border-input bg-transparent px-0.5 py-2.5 text-sm outline-none transition-colors focus:border-primary"
                 />
               )}
             />
             {errors.email && (
-              <p className="mt-1 text-sm text-destructive">{errors.email.message}</p>
+              <p className="mt-1.5 text-sm text-destructive">{errors.email.message}</p>
             )}
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-1 block text-sm font-medium text-foreground">
+            <label
+              htmlFor="password"
+              className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+            >
               Contrasena
             </label>
             <Controller
@@ -87,12 +97,12 @@ export function LoginPage() {
                   id="password"
                   type="password"
                   autoComplete="current-password"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full border-b-2 border-input bg-transparent px-0.5 py-2.5 text-sm outline-none transition-colors focus:border-primary"
                 />
               )}
             />
             {errors.password && (
-              <p className="mt-1 text-sm text-destructive">{errors.password.message}</p>
+              <p className="mt-1.5 text-sm text-destructive">{errors.password.message}</p>
             )}
           </div>
 
@@ -101,7 +111,7 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="mt-2 w-full rounded-md bg-primary px-3 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {isSubmitting ? 'Ingresando...' : 'Ingresar'}
           </button>

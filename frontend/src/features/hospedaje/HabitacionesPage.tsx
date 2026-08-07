@@ -128,7 +128,7 @@ export function HabitacionesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-foreground">Habitaciones</h1>
+        <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">Habitaciones</h1>
         <p className="text-sm text-muted-foreground">
           {habitaciones.length} habitaciones en {pisos.length} pisos · {ocupacion}% ocupacion
         </p>
@@ -238,7 +238,7 @@ export function HabitacionesPage() {
                     }`}
                   >
                     <div className="mb-1.5 flex items-center justify-between">
-                      <span className="text-lg font-semibold text-card-foreground">
+                      <span className="font-serif text-xl font-semibold text-card-foreground">
                         {habitacion.numero}
                       </span>
                       <Icono size={16} className="text-muted-foreground" />

@@ -66,7 +66,7 @@ export function TemporadaFormModal({ temporadaExistente, onCerrar, onGuardada }:
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-semibold text-card-foreground">
+          <h3 className="font-serif text-lg font-semibold text-card-foreground">
             {temporadaExistente ? 'Editar temporada' : 'Nueva temporada'}
           </h3>
           <button onClick={onCerrar} className="text-xs text-muted-foreground hover:underline">

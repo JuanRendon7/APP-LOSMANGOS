@@ -72,6 +72,8 @@ class VentaMostradorInput(BaseModel):
 class VentaItemResponse(BaseModel):
     id_venta_item: int
     nombre_producto: str
+    id_producto_bar: int | None
+    id_producto_restaurante: int | None
     cantidad: int
     precio_unitario: int
 

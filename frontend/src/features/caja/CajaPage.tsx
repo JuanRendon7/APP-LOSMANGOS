@@ -83,7 +83,7 @@ export function CajaPage() {
       if (actual) {
         const [gastosDatos, ventasDatos] = await Promise.all([
           listarGastos(actual.id_turno),
-          listarVentas(actual.id_turno),
+          listarVentas({ idTurno: actual.id_turno }),
         ])
         setGastos(gastosDatos)
         setVentas(ventasDatos)
@@ -195,7 +195,7 @@ function AbrirCajaCard({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="mb-3 flex items-center gap-2 font-semibold text-card-foreground">
+      <h3 className="mb-3 flex items-center gap-2 font-serif text-lg font-semibold text-card-foreground">
         <Wallet size={18} className="text-primary" /> Abrir caja
       </h3>
       <div className="flex flex-wrap items-end gap-2">
@@ -259,7 +259,7 @@ function ResumenTurnoCard({ turno, ventas }: { turno: TurnoCaja; ventas: Venta[]
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 font-semibold text-card-foreground">
+        <h3 className="flex items-center gap-2 font-serif text-lg font-semibold text-card-foreground">
           <Wallet size={18} className="text-primary" /> Turno actual
         </h3>
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -267,11 +267,11 @@ function ResumenTurnoCard({ turno, ventas }: { turno: TurnoCaja; ventas: Venta[]
         </span>
       </div>
 
-      <div className="mb-4 rounded-lg bg-primary/10 p-4 text-center">
+      <div className="mb-4 rounded-lg border-t-2 border-oro-500 bg-primary/10 p-4 text-center">
         <p className="text-xs font-semibold uppercase tracking-wide text-primary">
           Esperado en efectivo
         </p>
-        <p className="mt-1 text-3xl font-bold text-foreground">
+        <p className="mt-1 font-serif text-4xl font-bold text-foreground">
           {formatoMoneda.format(turno.monto_esperado_efectivo)}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
@@ -421,7 +421,7 @@ function GastosCard({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="mb-3 flex items-center justify-between font-semibold text-card-foreground">
+      <h3 className="mb-3 flex items-center justify-between font-serif text-lg font-semibold text-card-foreground">
         <span className="flex items-center gap-2">
           <Receipt size={18} className="text-primary" /> Gastos del turno
         </span>
@@ -551,7 +551,7 @@ function CerrarCajaCard({
 
   return (
     <div className="rounded-lg border border-border bg-card p-4">
-      <h3 className="mb-3 flex items-center gap-2 font-semibold text-card-foreground">
+      <h3 className="mb-3 flex items-center gap-2 font-serif text-lg font-semibold text-card-foreground">
         <Coins size={18} className="text-primary" /> Cerrar caja
       </h3>
       <div className="flex flex-wrap items-end gap-2">

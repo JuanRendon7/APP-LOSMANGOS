@@ -60,7 +60,7 @@ export function TarifarioPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-foreground">Tarifario</h1>
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">Tarifario</h1>
           <p className="text-sm text-muted-foreground">
             Precios por temporada. El total de cada reserva se calcula con estos valores.
           </p>

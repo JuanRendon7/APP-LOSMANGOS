@@ -5,9 +5,10 @@
 
 @theme {
   /* Marca Hotel Los Mangos: extraida de docs/unnamed.jpg (letrero "Los Mangos ·
-     Hotel & Restaurante"): pared beige/taupe calida, tinta casi negra tipo espresso,
-     resplandor calido de spots -> terracota como acento primario. */
-  --color-marca-50: oklch(0.98 0.008 80);
+     Hotel & Restaurante"): pared beige/taupe calida y tinta casi negra tipo
+     espresso. Sin acento naranja: el color primario es la propia tinta del
+     logo, no un color inventado. */
+  --color-marca-50: oklch(0.97 0.015 80);
   --color-marca-100: oklch(0.955 0.014 75);
   --color-marca-200: oklch(0.905 0.022 70);
   --color-marca-300: oklch(0.825 0.032 65);
@@ -19,15 +20,38 @@
   --color-marca-900: oklch(0.175 0.014 40);
   --color-marca-950: oklch(0.12 0.01 40);
 
-  /* Acento de marca: terracota / naranja quemado. */
-  --color-acento-400: oklch(0.72 0.13 45);
-  --color-acento-500: oklch(0.62 0.15 40);
-  --color-acento-600: oklch(0.52 0.15 35);
+  /* Verde hoja de mango: el segundo color de la marca (las hojas del icono),
+     mas oliva/bosque que el verde esmeralda que ya usamos para "disponible"
+     en habitaciones/mesas/productos, para no confundir marca con estado. Se
+     usa en zonas puntuales (nav activo, foco, graficas, icono) para que el
+     espresso + beige no se sientan planos. */
+  --color-mango-50: oklch(0.965 0.025 140);
+  --color-mango-100: oklch(0.92 0.045 138);
+  --color-mango-200: oklch(0.85 0.07 136);
+  --color-mango-300: oklch(0.74 0.09 134);
+  --color-mango-400: oklch(0.62 0.1 132);
+  --color-mango-500: oklch(0.5 0.1 132);
+  --color-mango-600: oklch(0.4 0.09 132);
+  --color-mango-700: oklch(0.32 0.075 132);
+  --color-mango-800: oklch(0.25 0.06 132);
+  --color-mango-900: oklch(0.185 0.045 132);
+
+  /* Dorado calido: acento decorativo puntual (lineas finas, subrayados),
+     nunca color de fondo ni de boton, para no repetir el error del naranja
+     anterior. Hue mas amarillo/oro que la vieja terracota (45) y que el
+     verde mango (132). */
+  --color-oro-300: oklch(0.84 0.05 80);
+  --color-oro-400: oklch(0.74 0.09 78);
+  --color-oro-500: oklch(0.64 0.11 75);
+  --color-oro-600: oklch(0.54 0.11 72);
+
+  --font-sans: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
 
   --color-background: var(--color-marca-50);
   --color-foreground: var(--color-marca-900);
-  --color-primary: var(--color-acento-500);
-  --color-primary-foreground: oklch(0.99 0.006 80);
+  --color-primary: var(--color-marca-800);
+  --color-primary-foreground: var(--color-marca-50);
   --color-secondary: var(--color-marca-200);
   --color-secondary-foreground: var(--color-marca-900);
   --color-muted: var(--color-marca-100);
@@ -38,12 +62,12 @@
   --color-destructive-foreground: oklch(0.99 0.006 80);
   --color-border: var(--color-marca-200);
   --color-input: var(--color-marca-200);
-  --color-ring: var(--color-acento-400);
+  --color-ring: var(--color-mango-500);
   --color-card: oklch(0.995 0.004 80);
   --color-card-foreground: var(--color-marca-900);
 
   /* Solo para graficas (dashboard). */
-  --color-chart-1: var(--color-acento-500);
+  --color-chart-1: var(--color-mango-600);
   --color-chart-2: oklch(0.5 0.06 130);
   --color-chart-3: oklch(0.55 0.13 30);
   --color-chart-4: oklch(0.78 0.07 75);
@@ -56,7 +80,7 @@
 :root[data-theme="dark"] {
   --color-background: var(--color-marca-950);
   --color-foreground: var(--color-marca-50);
-  --color-primary: var(--color-acento-400);
+  --color-primary: var(--color-marca-100);
   --color-primary-foreground: var(--color-marca-950);
   --color-secondary: var(--color-marca-800);
   --color-secondary-foreground: var(--color-marca-50);
@@ -66,11 +90,11 @@
   --color-accent-foreground: var(--color-marca-50);
   --color-border: var(--color-marca-800);
   --color-input: var(--color-marca-800);
+  --color-ring: var(--color-mango-400);
   --color-card: var(--color-marca-900);
   --color-card-foreground: var(--color-marca-50);
 }
 
 body {
-  @apply bg-background text-foreground;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  @apply bg-background text-foreground font-sans;
 }

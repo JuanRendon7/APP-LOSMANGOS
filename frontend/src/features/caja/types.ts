@@ -31,6 +31,8 @@ export interface Gasto {
 export interface VentaItem {
   id_venta_item: number
   nombre_producto: string
+  id_producto_bar: number | null
+  id_producto_restaurante: number | null
   cantidad: number
   precio_unitario: number
 }

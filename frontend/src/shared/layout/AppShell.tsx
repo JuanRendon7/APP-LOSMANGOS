@@ -111,14 +111,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="flex items-center gap-2.5 border-b border-border px-4 py-5">
+          <div className="flex items-center gap-2.5 border-b border-oro-400/40 px-4 py-5">
             <MangoIcon size={28} className="shrink-0 text-marca-900" />
             {!colapsado && (
               <div className="min-w-0">
-                <p className="truncate text-sm font-bold tracking-tight text-marca-900">
+                <p className="truncate font-serif text-base font-semibold tracking-tight text-marca-900">
                   Hotel Los Mangos
                 </p>
-                <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   Gestión
                 </p>
               </div>
@@ -134,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               return (
                 <div key={grupo.titulo}>
                   {!colapsado && (
-                    <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <p className="mb-1.5 px-2.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                       {grupo.titulo}
                     </p>
                   )}
@@ -152,7 +152,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                               cn(
                                 'flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
                                 isActive
-                                  ? 'bg-primary text-primary-foreground'
+                                  ? 'bg-mango-700 text-mango-50'
                                   : 'text-marca-700 hover:bg-marca-200/70',
                                 colapsado && 'justify-center px-0',
                               )
@@ -207,7 +207,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-h-dvh flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-marca-50/70 px-4 py-3">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-oro-400/40 bg-marca-50/70 px-4 py-3">
           <button
             type="button"
             onClick={() => setAbiertoMovil(true)}
@@ -224,7 +224,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <PanelLeft size={18} />
           </button>
-          <p className="text-sm font-medium text-muted-foreground">
+          <p className="font-serif text-lg font-semibold tracking-tight text-foreground">
             {TITULOS_PAGINA[location.pathname] ?? 'Hotel Los Mangos'}
           </p>
         </header>

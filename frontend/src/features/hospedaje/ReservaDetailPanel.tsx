@@ -107,7 +107,7 @@ export function ReservaDetailPanel({
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-semibold text-card-foreground">Habitacion {habitacion.numero}</h3>
+        <h3 className="font-serif text-lg font-semibold text-card-foreground">Habitacion {habitacion.numero}</h3>
         <button onClick={onCerrar} className="text-xs text-muted-foreground hover:underline">
           Cerrar
         </button>

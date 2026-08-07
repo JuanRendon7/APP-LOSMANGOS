@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from src.caja.models import METODOS_PAGO, Gasto, TurnoCaja, Venta, VentaItem
 from src.caja.repository import CajaRepository
@@ -31,9 +31,13 @@ class CajaService:
         return self.repository.obtener_turno_abierto(id_usuario)
 
     def listar_turnos(
-        self, id_usuario: int | None, estado: str | None
+        self,
+        id_usuario: int | None,
+        estado: str | None,
+        desde: date | None = None,
+        hasta: date | None = None,
     ) -> list[TurnoCaja]:
-        return self.repository.listar_turnos(id_usuario, estado)
+        return self.repository.listar_turnos(id_usuario, estado, desde, hasta)
 
     def abrir_turno(self, id_usuario: int, monto_apertura: int) -> TurnoCaja:
         if self.repository.obtener_turno_abierto(id_usuario) is not None:
@@ -96,8 +100,12 @@ class CajaService:
         id_turno: int | None,
         metodo_pago: str | None,
         origen: str | None,
+        desde: date | None = None,
+        hasta: date | None = None,
     ) -> list[Venta]:
-        return self.repository.listar_ventas(id_turno, metodo_pago, origen)
+        return self.repository.listar_ventas(
+            id_turno, metodo_pago, origen, desde, hasta
+        )
 
     def _validar_metodo_pago(self, metodo_pago: str) -> None:
         if metodo_pago not in METODOS_PAGO:

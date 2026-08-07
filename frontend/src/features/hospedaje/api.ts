@@ -24,9 +24,16 @@ export async function buscarHuespedes(q: string): Promise<Huesped[]> {
 export async function listarReservas(params: {
   idHabitacion?: number
   estado?: string
+  desde?: string
+  hasta?: string
 }): Promise<Reserva[]> {
   const { data } = await apiClient.get<Reserva[]>('/reservas', {
-    params: { id_habitacion: params.idHabitacion, estado: params.estado },
+    params: {
+      id_habitacion: params.idHabitacion,
+      estado: params.estado,
+      desde: params.desde,
+      hasta: params.hasta,
+    },
   })
   return data
 }

@@ -1,6 +1,7 @@
 # Hotel Los Mangos — Plan y estado del proyecto
 
-Última actualización: 2026-08-06 (sesión Fase 0 a Fase 3).
+Última actualización: 2026-08-07 (Fase 4, rediseño visual, Fase 5: mesas/pedidos/comanda,
+Fase 6: consumo a habitación, y Fase 7: caja).
 
 ## Qué es esto
 
@@ -99,23 +100,222 @@ dependencies.py # get_xxx_service(db=Depends(get_db))
    `HospedajeService`. Solo ADMINISTRADOR gestiona tarifas; EMPLEADO sí ve el total de
    una reserva. Frontend: `features/tarifas/` (tabla CRUD, modal crear/editar), link
    "Tarifario" solo visible para admin, total visible en el panel de reserva.
-4. **Fase 4: Productos y bar** — pendiente. Catálogo con código de barras, precio de
-   costo vs. venta, margen de ganancia. Recursos RBAC ya sembrados:
-   `PRODUCTOS_RESTAURANTE`, `PRODUCTOS_BAR` (con acción extra `VER_COSTOS` — el costo es
-   dato sensible, ya contemplado en el seed para ocultarlo a empleados si se desea).
-5. **Fase 5: Restaurante** — mapa de mesas, comandas, impresión de pedido a cocina.
-   Recursos ya sembrados: `MESAS`, `PEDIDOS`.
-6. **Fase 6: Consumo a habitación** — cargar productos/consumos a la cuenta de una
-   habitación ocupada (conecta hospedaje + productos).
-7. **Fase 7: Caja** — métodos de pago (QR/tarjeta/transferencia/efectivo), gastos,
-   cierre diario con balance. Recursos ya sembrados: `CAJA` (con acción `CERRAR`),
-   `GASTOS`, `VENTAS`.
+4. ~~**Fase 4: Productos (restaurante y bar)**~~ — DONE. Paquete
+   `backend/src/productos/` (`ProductoRestaurante`, `ProductoBar`). Sin categorías (decisión
+   del usuario). `ProductoBar` tiene `codigo_barras` único, `precio_costo`, `precio_venta`
+   y `stock` (con inventario desde ya, ajustable manualmente vía
+   `POST /productos-bar/{id}/ajustar-stock`, sin historial de movimientos). El costo y
+   el margen (`margen`, `margen_porcentaje`) solo viajan en la respuesta si el actor
+   tiene `PRODUCTOS_BAR:VER_COSTOS` — si no, van en `null` (empleado ve el catálogo
+   completo para vender, pero no costos). Sin borrado (`ELIMINAR`) en ninguno de los
+   dos catálogos: se desactivan con `activo`, porque las Fases 5-7 van a referenciar
+   productos desde pedidos/ventas. Frontend: `features/productos/`
+   (`ProductosRestaurantePage`, `ProductosBarPage` con columnas de costo/margen ocultas
+   si no hay `VER_COSTOS`, `AjustarStockModal`), enlaces "Restaurante" y "Bar" en el nav.
+5. ~~**Fase 5: Restaurante (mesas, pedidos, comanda)**~~ — DONE. Paquete
+   `backend/src/restaurante/` (`Mesa`, `Pedido`, `PedidoItem`). Mapa de mesas con
+   layout libre (posición `pos_x`/`pos_y` en % arrastrable, sin librería de
+   drag-and-drop — `onPointerDown/Move/Up` nativos + `setPointerCapture`). Pedidos con
+   seguimiento en cocina: `ABIERTO → ENVIADO_COCINA → EN_PREPARACION → LISTO →
+   ENTREGADO → CERRADO` (transición secuencial vía `TRANSICIONES_PEDIDO`, mismo patrón
+   que `TRANSICIONES_HABITACION_PERMITIDAS`). `PedidoItem.precio_unitario` se copia de
+   `ProductoRestaurante.precio_venta` al agregarlo (no cambia si el menú cambia
+   después). Impresión de comanda: ruta `/pedidos/:id/comanda` **sin `AppShell`**
+   (ticket plano, `window.print()` automático al cargar), abierta con `window.open()`
+   desde el panel del pedido. Sin borrado de mesas (se desactivan, igual que
+   habitaciones/productos, porque los pedidos las referencian por FK). Frontend:
+   `features/restaurante/` (`MapaMesasPage` con modo edición admin-only,
+   `MesaFormModal`, `PedidoPanel`, `ComandaPage`), enlace "Mesas" en el nav.
+6. ~~**Fase 6: Consumo a habitación**~~ — DONE. Paquete `backend/src/consumo/`
+   (`ConsumoItem`). Se puede cargar tanto bar como restaurante a una habitación con
+   check-in activo (`reserva.estado == "CHECK_IN"`, si no `BusinessRuleError`). Sin
+   seguimiento de cocina — es un registro simple con `precio_unitario` copiado del
+   catálogo al agregar (mismo criterio que `PedidoItem`). **Cargar un item de bar
+   descuenta stock automáticamente** (`ProductosService.ajustar_stock_bar`, reutilizada
+   de la Fase 4) y quitarlo lo restaura. Gateado con el recurso `VENTAS` (ya sembrado,
+   sin usar hasta ahora): empleado puede `VER`/`CREAR` pero no `EDITAR` (no puede quitar
+   un item ya cargado, solo el admin). El consumo **no se guarda en `Reserva`** — se
+   suma en el frontend (`ConsumoPanel`, dentro de `ReservaDetailPanel`) mostrando
+   "Hospedaje + Consumo = Total", para no acoplar el módulo de consumo al de hospedaje
+   más de lo necesario. 6 tests nuevos (50 total). Verificado end-to-end con Playwright.
+7. ~~**Fase 7: Caja**~~ — DONE (2026-08-07). Paquete `backend/src/caja/`
+   (`TurnoCaja`, `Gasto`, `Venta`, `VentaItem`). **Cierre de caja por turno/empleado**
+   (decisión del usuario): cada usuario abre su propia caja (`monto_apertura`) y la
+   cierra declarando el efectivo contado; el sistema calcula
+   `monto_esperado_efectivo = apertura + efectivo_vendido - gastos` y la `diferencia`
+   contra lo contado (ambos computados en el router al serializar, no persistidos —
+   mismo criterio que `Pedido.total`/`ConsumoResumenResponse.total`). Un usuario no
+   puede tener dos turnos abiertos a la vez; sí pueden coexistir turnos abiertos de
+   distintos usuarios. **Método de pago capturado en todo cobro**: `CajaService`
+   orquesta los tres flujos de venta reutilizando los servicios de otras fases en vez
+   de duplicar su lógica — `cobrar_habitacion` suma `Reserva.precio_total` +
+   consumo (vía `ConsumoRepository`) y llama a `HospedajeService.check_out`;
+   `cobrar_pedido` suma los items del pedido y llama a `RestauranteService.cerrar_pedido`;
+   `venta_mostrador` es un flujo nuevo (bar/restaurante sin mesa ni habitación, ej.
+   venta de mostrador por código de barras) con `VentaItem` polimórfico igual a
+   `ConsumoItem` de la Fase 6, que también descuenta stock de bar
+   (`ProductosService.ajustar_stock_bar`). Los endpoints crudos de check-out
+   (`POST /reservas/{id}/check-out`) y cerrar pedido (`POST /pedidos/{id}/cerrar`) se
+   dejaron intactos en el backend pero el frontend ya no los llama directamente para el
+   flujo normal — usa `/caja/ventas/habitacion` y `/caja/ventas/pedido`, que exigen una
+   caja abierta y sí registran el pago. Excepción: `PedidoPanel` conserva un botón
+   "Cancelar pedido (sin cobro)" que sí usa el endpoint crudo, solo visible si el pedido
+   está vacío (liberar una mesa sin venta, ej. cliente que se va sin pedir). Gastos:
+   `GASTOS:EDITAR`/`ELIMINAR` solo para admin (empleado registra pero no corrige/borra,
+   igual criterio que "Cerrar mesa"/quitar consumo en fases previas). `VENTAS:EDITAR`
+   sigue sin usarse — una venta cobrada es un registro financiero inmutable en esta
+   fase, sin función de "anular venta" todavía. Frontend: `features/caja/CajaPage.tsx`
+   (resumen del turno, gastos con edición inline, "Venta rápida (mostrador)" con
+   carrito local antes de cobrar, apertura/cierre de caja), enlace "Caja" en el nav.
+   8 tests nuevos (58 total). Verificado end-to-end con Playwright (cobro de habitación,
+   cobro de mesa, venta de mostrador con descuento de stock, gasto, cierre con
+   diferencia $0).
 8. **Fase 8: Reportería**. Recurso ya sembrado: `REPORTES`.
 9. **Fase 9: Sincronización con Booking.com** (iCal). Ya existe
    `BOOKING_ICAL_TOKEN_SECRET` en la config del backend y la librería `icalendar` en
    `pyproject.toml`, sin usar todavía. `Reserva` ya tiene `origen` y
    `referencia_externa` preparados para distinguir reservas directas de las
    sincronizadas. Recurso ya sembrado: `BOOKING_SYNC`.
+
+## Rediseño visual (2026-08-07): sidebar + marca
+
+Se reemplazó el AppShell de top-nav por un **sidebar izquierdo colapsable** con
+secciones agrupadas (OPERACIÓN: Inicio/Habitaciones/Reportes/Mesas/Restaurante/Bar/Caja;
+ADMINISTRACIÓN: Tarifario), inspirado en una referencia visual que dio el usuario.
+Detalles:
+
+- **Paleta de marca**: extraída de `docs/unnamed.jpg` (foto del letrero "Los Mangos ·
+  Hotel & Restaurante" — pared beige/taupe cálida, tinta casi negra, resplandor cálido
+  de spots). Tokens en `frontend/src/index.css` (`@theme`): escala `--color-marca-*`
+  ahora es un neutro cálido (antes gris puro), `--color-primary` es terracota/naranja
+  quemado (antes gris oscuro) y se usa para botones primarios, ítem de nav activo y
+  gráficas. Tokens nuevos `--color-chart-2/3/4` solo para gráficas.
+- **Icono de marca**: `frontend/src/shared/ui/MangoIcon.tsx` — SVG dibujado a mano
+  (dos hojas + mango con línea de brillo), no la foto (que es un mockup de pared, no
+  escala bien a tamaños pequeños). Usar este componente para cualquier lugar nuevo que
+  necesite el icono (favicon, splash, etc.), no la foto.
+- **Fondo difuminado** (`frontend/public/brand-bg.jpg`, copia de `docs/unnamed.jpg`):
+  a pantalla completa y bien difuminado en el login (`LoginPage.tsx`, momento de marca
+  fuerte, baja densidad de información); muy sutil y solo detrás del panel del sidebar
+  en el resto de la app (`AppShell.tsx`) — nunca detrás de tablas/formularios, para no
+  sacrificar contraste de texto.
+- **Dashboard "Inicio"** (`frontend/src/features/dashboard/DashboardPage.tsx`): ya no es
+  un placeholder — stat cards + gráfica de barras (reservas por estado) + donut
+  (ocupación) con `recharts` (dependencia que ya estaba instalada sin usar), alimentado
+  100% por endpoints que ya existían (`listarHabitaciones`, `listarReservas`,
+  `listarProductosRestaurante`, `listarProductosBar`), sin cambios de backend.
+- **Reporte por fechas** (`frontend/src/features/hospedaje/ReportesPage.tsx`, nuevo,
+  ruta `/reportes`): exporta CSV client-side (sin librería nueva, `Blob` + `<a
+  download>`) de reservas filtradas por rango de fechas, usando el filtro
+  `desde`/`hasta` que `GET /reservas` ya soportaba en el backend pero el frontend no
+  exponía — se agregó a `listarReservas` en `frontend/src/features/hospedaje/api.ts`.
+- **Ojo con gráficas de `recharts` + tokens CSS**: un color de dona/barra pasado como
+  `var(--color-marca-200)` puede quedar casi invisible si es muy cercano al fondo de la
+  tarjeta (le pasó a la dona de ocupación) — usar al menos `--color-marca-400` para
+  cualquier segmento "neutro" en una gráfica, nunca los tonos 100-200 de la escala.
+- **Ajuste posterior (mismo día)**: a pedido del usuario, el fondo de marca pasó de
+  "solo detrás del sidebar" a **global** — `frontend/src/shared/layout/BrandBackdrop.tsx`
+  (nuevo, componente reutilizable con `position:fixed` + imagen difuminada + velo de
+  color encima) se monta una sola vez en `AppShell.tsx` (detrás de sidebar y contenido)
+  y otra vez en `LoginPage.tsx` (más visible ahí, es el momento de marca fuerte). De
+  paso se aplanó el diseño: se quitó `shadow-sm`/`shadow-xl` de tarjetas y del header
+  (que ahora es `bg-marca-50/70` sin `backdrop-blur`, no vidrio) — los `shadow-lg` de
+  los modales SÍ se dejaron (necesitan elevación real sobre el overlay oscuro). Si se
+  agrega una tarjeta nueva en cualquier página, seguir el patrón sin sombra (`border
+  border-border bg-card`, sin `shadow-*`) para mantener la consistencia plana.
+- **Fondo de marca mucho más visible (2026-08-07, segundo ajuste)**: el usuario insistió
+  ("QUE ESA IMAGEN SEA EL FONDO DE TODO") en que la foto de `docs/unnamed.jpg` se
+  reconociera de verdad, no solo un tinte casi imperceptible. `BrandBackdrop.tsx` ganó
+  un tercer prop `desenfoquePx` (antes el blur estaba fijo en `blur-3xl` vía clase de
+  Tailwind, ahora es `filter: blur(Npx)` inline para poder graduarlo) y los valores por
+  defecto subieron bastante: `opacidadImagen` 0.16→0.4, `opacidadVelo` 0.6→0.5,
+  desenfoque de "blur-3xl" (irreconocible) a 5px (se lee claramente el letrero "LOS
+  MANGOS · HOTEL & RESTAURANTE"). En `LoginPage.tsx` es todavía más fuerte
+  (`opacidadImagen=0.6`, `opacidadVelo=0.32`, `desenfoquePx=2`) porque es el momento de
+  marca más fuerte y la tarjeta del formulario (`bg-card/90`) sigue totalmente legible
+  encima. Funciona sin perder contraste porque las tarjetas (`bg-card`) son de color
+  sólido, no transparente — el fondo solo "respira" en los huecos entre tarjetas, en el
+  sidebar y en pantallas con poco contenido (ej. el estado vacío de "Abrir caja" en
+  Vender), nunca detrás de texto suelto sobre tarjetas.
+- **Corrección: se veía pixelada (2026-08-07, tercer ajuste)**: al subir la visibilidad
+  de la foto se notó que se veía borrosa/pixelada en pantallas anchas. Causa:
+  `docs/unnamed.jpg` es de 1254×1254px, pero `BrandBackdrop.tsx` usaba
+  `background-size: cover` + `scale-110`, lo que en un monitor de 1920px de ancho
+  fuerza a estirar la imagen a ~1.7× su resolución nativa (cover escala por el lado más
+  exigente, aquí el ancho). Con el desenfoque grande de la primera versión (`blur-3xl`)
+  eso no se notaba; al bajar el desenfoque para que el logo se reconociera, la
+  pixelación quedó expuesta. Arreglo: se quitó `cover` y `scale-110`, ahora usa
+  `background-size: min(1300px, 105vw)` (casi 1:1 con el original, nunca más de ~1.04×
+  de escala) centrado, con el velo de color rellenando el resto sin costura visible —
+  se ve como una foto nítida enmarcada en el color de marca, no una imagen estirada de
+  borde a borde.
+- **"Vender" como sección principal (2026-08-07, a pedido del usuario tras mostrar
+  Alegra POS como referencia)**: la landing page (`/`) ya no es el dashboard — ahora es
+  `frontend/src/features/caja/VenderPage.tsx`, una pantalla de venta rápida de
+  mostrador (bar/restaurante sin mesa ni habitación) que antes vivía como tarjeta
+  secundaria dentro de `/caja`. Si el usuario no tiene turno de caja abierto, la propia
+  pantalla lo resuelve inline (formulario compacto de apertura) sin salir del flujo. El
+  dashboard se movió a `/inicio` (ya no es la raíz). En el sidebar, "Vender" es el
+  primer enlace del grupo Operación (ícono `ShoppingCart`), "Inicio" quedó segundo.
+  `CajaPage.tsx` perdió la tarjeta de venta rápida — ahora es puramente administrativa
+  (turno, gastos, cierre). Sin cambios de backend, solo reordenamiento de
+  navegación/rutas en el frontend.
+- **"Inicio" renombrado a "Resumen" + KPIs clickeables (2026-08-07)**: ruta movida de
+  `/inicio` a `/resumen` (`frontend/src/features/dashboard/DashboardPage.tsx`, mismo
+  componente). Las 6 tarjetas de KPI ahora son botones: las 4 de habitaciones/reservas
+  alternan un panel de detalle inline (`DetalleKpi`, mismo archivo) que lista los
+  registros reales usando los datos ya cargados en memoria (sin llamadas nuevas al
+  backend) — ej. click en "Ocupadas" muestra número de habitación + huésped; click en
+  "Reservas activas" muestra huésped, habitación, estado y fechas, con un link "Ir a
+  Reportes". Las 2 de productos navegan directo a `/productos/restaurante` y
+  `/productos/bar` (ya tienen su propia página completa, no necesitan vista inline).
+- **Escaneo de código de barras en "Vender" (2026-08-07)**: en
+  `frontend/src/features/caja/VenderPage.tsx`, el input de código de barras está
+  auto-enfocado al entrar a la pantalla (para que un lector de códigos, que solo
+  "escribe" caracteres y Enter, funcione sin clicks). Al presionar Enter busca el
+  producto en el catálogo de bar ya cargado en memoria (`ProductoBar.codigo_barras`,
+  sin llamada nueva al backend) y lo agrega al carrito; si ya estaba en el carrito,
+  **suma cantidad a la misma línea** en vez de duplicarla (aplica igual al agregar
+  manualmente). Si el código no existe muestra un error inline y vuelve a enfocar el
+  input. El selector manual (origen/producto/cantidad) se dejó debajo como respaldo,
+  necesario para productos de restaurante (no tienen código de barras).
+- **"Movimientos de este turno" en Vender (2026-08-07)**: debajo del carrito, lista
+  cronológica (más reciente primero) de las ventas del turno abierto — hora, origen
+  (Habitación/Mesa/Mostrador), método de pago y monto. Alcance elegido: por **turno**
+  (`GET /caja/ventas?id_turno=`, ya existía desde la Fase 7), no por día calendario —
+  no hay endpoint de filtro por fecha en el backend y turno ya es, en la práctica, "la
+  sesión del día" de cada cajero. Se refresca sola tras cada cobro
+  (`cargarMovimientos()` en `VenderPage.tsx`). Si más adelante se quiere un
+  histórico multi-turno por fecha, hace falta agregar filtro `desde`/`hasta` en
+  `backend/src/caja/router.py` (no existe todavía).
+- **Detalle de producto en movimientos + buscador de producto (2026-08-07)**: cada fila
+  de "Movimientos de este turno" ahora muestra debajo el detalle
+  (`venta.items.map(i => `${cantidad}× ${nombre_producto}`)`, ya venía en la respuesta
+  del backend, `VentaResponse.items`, sin usar en el frontend hasta ahora); si la venta
+  no tiene items (cobro de habitación/mesa, que no genera `VentaItem`) muestra "Sin
+  detalle de productos". El selector manual de producto en "Vender" dejó de ser un
+  `<select>` nativo — ahora es `BuscadorProducto` (mismo archivo,
+  `VenderPage.tsx`), un combobox liviano hecho a mano (sin librería nueva) que filtra
+  la lista ya cargada en memoria mientras se escribe, con Enter seleccionando la
+  primera coincidencia, igual de "instantáneo" que el flujo de código de barras.
+- **Rediseño de la pantalla "Abrir caja" en Vender (2026-08-07)**: el usuario la vio
+  "plana, fea, sin ajustar a la página" (una caja chica pegada arriba-izquierda con
+  mucho espacio vacío debajo). Ahora, cuando no hay turno abierto, `VenderPage.tsx`
+  centra el contenido verticalmente (`min-h-[70vh] flex items-center justify-center`),
+  con un saludo "Bienvenido de nuevo, {primer nombre del usuario}" arriba y una tarjeta
+  `rounded-2xl` más grande con ícono circular (`Wallet` en un círculo
+  `bg-primary/10`), título, subtítulo y el formulario de apertura — mismo patrón visual
+  (icono en círculo + jerarquía tipográfica) que ya usan las StatCard de Resumen, para
+  que se sienta parte del mismo sistema de diseño y no una pantalla aparte. El mismo
+  saludo se repite arriba cuando ya hay turno abierto, ahí con el subtítulo "Turno
+  abierto con {monto} en caja" en vez del CTA de apertura. La tarjeta de venta perdió
+  su `<h1>Vender</h1>` (redundante con el saludo y con el título "Vender" que ya pone
+  `AppShell` en la barra superior) y ahora dice "Nueva venta".
+- **No se retocaron** los colores de estado ya existentes en páginas de Fase 2-4
+  (verde/azul/ámbar/rojo de habitaciones, verde/rojo de productos) — quedan con su
+  paleta original de Tailwind, solo el shell/marca/dashboard usan los tokens nuevos.
+  Si se quiere unificar eso con la paleta cálida, es trabajo pendiente, no se hizo en
+  esta sesión.
 
 ## Decisiones y convenciones a mantener
 
@@ -154,13 +354,16 @@ dependencies.py # get_xxx_service(db=Depends(get_db))
 
 ## Pendiente de decidir con el usuario (aún no se ha preguntado)
 
-- Alcance exacto de "Registrar gastos" y "Reportería" (qué reportes específicos).
-- Si el catálogo de productos (Fase 4) necesita categorías o solo nombre+precio+código
-  de barras.
-- Diseño del mapa de mesas (Fase 5): ¿grid fijo configurable por admin, o layout libre
-  tipo canvas?
+- Alcance exacto de "Reportería" (qué reportes específicos, más allá del export CSV de
+  reservas que ya existe en `/reportes` desde el rediseño visual).
+- Fase 9 (Booking.com): detalles de la sincronización iCal (¿solo importar reservas
+  externas, o también exportar las propias?).
 
 ## Estado de git al cerrar esta sesión
 
-Nada de Fase 2 ni Fase 3 está commiteado todavía (working tree con cambios). Antes de
-seguir, decidir si se commitea todo junto o por fase.
+Fases 0-3 están commiteadas y pusheadas a `origin/main` (commits `39decf7` y `d326aa5`).
+Fase 4 (productos), el rediseño visual (sidebar + marca + dashboard + reportes), la
+Fase 5 (mesas/pedidos/comanda), la Fase 6 (consumo a habitación) y la Fase 7 (caja) se
+construyeron y verificaron en esta sesión pero **no se han commiteado** — confirmar con
+el usuario antes de asumir su estado en la próxima sesión (`git log` y `git status` lo
+confirman rápido).

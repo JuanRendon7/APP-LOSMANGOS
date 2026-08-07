@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
+import { cobrarHabitacion } from '@/features/caja/api'
+import type { MetodoPago } from '@/features/caja/types'
+import { ConsumoPanel } from '@/features/consumo/ConsumoPanel'
 import { useAuth } from '@/shared/auth/AuthContext'
-import { cancelarReserva, checkIn, checkOut, listarReservas } from './api'
+import { cancelarReserva, checkIn, listarReservas } from './api'
 import type { Habitacion, Reserva } from './types'
+
+const METODOS: MetodoPago[] = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'QR']
+const ETIQUETA_METODO: Record<MetodoPago, string> = {
+  EFECTIVO: 'Efectivo',
+  TARJETA: 'Tarjeta',
+  TRANSFERENCIA: 'Transferencia',
+  QR: 'QR',
+}
 
 const formatoMoneda = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -30,6 +41,8 @@ export function ReservaDetailPanel({
   const [proximas, setProximas] = useState<Reserva[]>([])
   const [cargandoProximas, setCargandoProximas] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO')
+  const [cobrando, setCobrando] = useState(false)
 
   const cargarProximas = useCallback(async () => {
     if (habitacion.estado === 'OCUPADA') {
@@ -69,11 +82,15 @@ export function ReservaDetailPanel({
 
   const manejarCheckOut = async () => {
     if (!habitacion.reserva_activa) return
+    setError(null)
+    setCobrando(true)
     try {
-      await checkOut(habitacion.reserva_activa.id_reserva)
+      await cobrarHabitacion(habitacion.reserva_activa.id_reserva, metodoPago)
       await onActualizado()
     } catch {
-      setError('No se pudo hacer check-out.')
+      setError('No se pudo cobrar y hacer check-out. Verifica que tengas una caja abierta.')
+    } finally {
+      setCobrando(false)
     }
   }
 
@@ -113,17 +130,32 @@ export function ReservaDetailPanel({
             Desde {habitacion.reserva_activa.fecha_checkin_prevista} hasta{' '}
             {habitacion.reserva_activa.fecha_checkout_prevista}
           </p>
-          <p className="font-medium text-foreground">
-            Total: {formatoMoneda.format(habitacion.reserva_activa.precio_total)}
-          </p>
           {puedeEditarReservas && (
-            <button
-              onClick={manejarCheckOut}
-              className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-            >
-              Check-out
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={metodoPago}
+                onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+              >
+                {METODOS.map((metodo) => (
+                  <option key={metodo} value={metodo}>
+                    {ETIQUETA_METODO[metodo]}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={manejarCheckOut}
+                disabled={cobrando}
+                className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                Cobrar y hacer check-out
+              </button>
+            </div>
           )}
+          <ConsumoPanel
+            idReserva={habitacion.reserva_activa.id_reserva}
+            precioHospedaje={habitacion.reserva_activa.precio_total}
+          />
         </div>
       )}
 

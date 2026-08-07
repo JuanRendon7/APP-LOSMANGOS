@@ -4,6 +4,8 @@ import { Controller, useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router'
 import { z } from 'zod'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { BrandBackdrop } from '@/shared/layout/BrandBackdrop'
+import { MangoIcon } from '@/shared/ui/MangoIcon'
 
 const loginSchema = z.object({
   email: z.string().email({ error: 'Ingresa un correo valido' }),
@@ -37,10 +39,15 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm rounded-lg border border-border bg-card p-8 shadow-sm">
-        <div className="mb-6 text-center">
-          <h1 className="text-xl font-semibold text-card-foreground">Hotel Los Mangos</h1>
+    <div className="relative flex min-h-dvh items-center justify-center px-4">
+      <BrandBackdrop opacidadImagen={0.6} opacidadVelo={0.32} desenfoquePx={2} />
+
+      <div className="relative w-full max-w-sm rounded-xl border border-border bg-card/90 p-8">
+        <div className="mb-6 flex flex-col items-center text-center">
+          <MangoIcon size={40} className="mb-3 text-primary" />
+          <h1 className="text-xl font-bold tracking-tight text-card-foreground">
+            Hotel Los Mangos
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">Ingresa a tu cuenta</p>
         </div>
 

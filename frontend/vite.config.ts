@@ -12,5 +12,12 @@ export default defineConfig({
   },
   server: {
     host: true,
+    watch: {
+      // Bind mounts de Docker en Windows no siempre propagan eventos
+      // inotify; sin polling, el watcher de Vite se queda con contenido
+      // desactualizado hasta reiniciar el contenedor.
+      usePolling: true,
+      interval: 300,
+    },
   },
 })

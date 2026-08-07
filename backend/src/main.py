@@ -8,11 +8,13 @@ from slowapi.util import get_remote_address
 
 from src.auth.router import roles_router, usuarios_router
 from src.auth.router import router as auth_router
+from src.hospedaje.router import habitaciones_router, huespedes_router, reservas_router
 from src.shared import (
     models_registry,  # noqa: F401  (resuelve metadata/FK antes de servir)
 )
 from src.shared.config import get_settings
 from src.shared.exceptions import BusinessRuleError, ConflictError, NotFoundError
+from src.tarifas.router import temporadas_router
 
 settings = get_settings()
 
@@ -55,3 +57,7 @@ def health() -> dict:
 app.include_router(auth_router)
 app.include_router(usuarios_router)
 app.include_router(roles_router)
+app.include_router(habitaciones_router)
+app.include_router(huespedes_router)
+app.include_router(reservas_router)
+app.include_router(temporadas_router)

@@ -4,9 +4,14 @@ Uso: `uv run python -m src.seed`
 """
 
 from src.auth.models import Permiso, Recurso, Rol, RolPermiso, Usuario, UsuarioRol
+from src.hospedaje.models import Habitacion
 from src.shared.config import get_settings
 from src.shared.database import SessionLocal
 from src.shared.security import hash_password
+
+HABITACIONES = [(numero, 1) for numero in range(102, 109)] + [
+    (numero, 2) for numero in range(201, 211)
+]
 
 RECURSOS_ACCIONES = {
     "HABITACIONES": ["VER", "CREAR", "EDITAR", "ELIMINAR"],
@@ -138,6 +143,15 @@ def seed() -> None:
         )
         if tiene_rol_admin is None:
             db.add(UsuarioRol(id_usuario=admin.id_usuario, id_rol=rol_admin.id_rol))
+
+        for numero, piso in HABITACIONES:
+            existe = (
+                db.query(Habitacion)
+                .filter(Habitacion.numero == str(numero))
+                .one_or_none()
+            )
+            if existe is None:
+                db.add(Habitacion(numero=str(numero), piso=piso))
 
         db.commit()
         print("Seed de RBAC completo.")

@@ -6,3 +6,5 @@ de Celery -- ningun otro archivo debe repetir esta lista.
 """
 
 from src.auth import models as auth_models  # noqa: F401
+from src.hospedaje import models as hospedaje_models  # noqa: F401
+from src.tarifas import models as tarifas_models  # noqa: F401

@@ -1,17 +1,24 @@
-from datetime import UTC, date, datetime, time
+from datetime import date, datetime, time
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from src.caja.models import Gasto, TurnoCaja, Venta, VentaItem
 
+# El hotel opera en horario de Colombia; "hoy" en un filtro de fecha debe
+# significar el dia calendario de Bogota, no el dia UTC del servidor (si no,
+# los reportes pierden movimientos de la noche, la franja UTC 00:00-05:00
+# donde el dia UTC ya cambio pero en Colombia todavia es "ayer").
+ZONA_HOTEL = ZoneInfo("America/Bogota")
+
 
 def _inicio_dia(dia: date) -> datetime:
-    return datetime.combine(dia, time.min, tzinfo=UTC)
+    return datetime.combine(dia, time.min, tzinfo=ZONA_HOTEL)
 
 
 def _fin_dia(dia: date) -> datetime:
-    return datetime.combine(dia, time.max, tzinfo=UTC)
+    return datetime.combine(dia, time.max, tzinfo=ZONA_HOTEL)
 
 
 class CajaRepository:
@@ -27,17 +34,22 @@ class CajaRepository:
             .options(
                 selectinload(TurnoCaja.ventas),
                 selectinload(TurnoCaja.gastos),
+                selectinload(TurnoCaja.usuario),
             )
         )
         return self.db.scalar(stmt)
 
-    def obtener_turno_abierto(self, id_usuario: int) -> TurnoCaja | None:
+    def obtener_turno_abierto(self) -> TurnoCaja | None:
+        """El hotel opera con un solo cajon fisico, asi que solo puede haber
+        un turno abierto a la vez para todo el hotel (sin importar quien lo
+        abrio); no es un turno por usuario."""
         stmt = (
             select(TurnoCaja)
-            .where(TurnoCaja.id_usuario == id_usuario, TurnoCaja.estado == "ABIERTO")
+            .where(TurnoCaja.estado == "ABIERTO")
             .options(
                 selectinload(TurnoCaja.ventas),
                 selectinload(TurnoCaja.gastos),
+                selectinload(TurnoCaja.usuario),
             )
         )
         return self.db.scalar(stmt)
@@ -50,7 +62,9 @@ class CajaRepository:
         hasta: date | None = None,
     ) -> list[TurnoCaja]:
         stmt = select(TurnoCaja).options(
-            selectinload(TurnoCaja.ventas), selectinload(TurnoCaja.gastos)
+            selectinload(TurnoCaja.ventas),
+            selectinload(TurnoCaja.gastos),
+            selectinload(TurnoCaja.usuario),
         )
         if id_usuario is not None:
             stmt = stmt.where(TurnoCaja.id_usuario == id_usuario)

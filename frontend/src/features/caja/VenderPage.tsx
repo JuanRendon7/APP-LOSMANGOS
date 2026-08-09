@@ -8,6 +8,7 @@ import {
   abrirTurno,
   deshacerUltimaVenta,
   listarVentas,
+  mensajeErrorCaja,
   obtenerTurnoActual,
   ventaMostrador,
 } from './api'
@@ -99,6 +100,8 @@ export function VenderPage() {
     return <p className="text-sm text-muted-foreground">No tienes permiso para vender.</p>
   }
 
+  const cajaAbiertaPorOtro = turno.nombre_usuario !== usuario?.nombre
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
@@ -107,7 +110,8 @@ export function VenderPage() {
             Bienvenido de nuevo, {primerNombre}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Turno abierto con {formatoMoneda.format(turno.monto_apertura)} en caja.
+            Turno abierto con {formatoMoneda.format(turno.monto_apertura)} en caja
+            {cajaAbiertaPorOtro && ` · abierta por ${turno.nombre_usuario}`}.
           </p>
         </div>
         {puedeCerrar && (
@@ -144,7 +148,7 @@ function AbrirCajaInline({
           <Wallet size={26} />
         </div>
         <p className="text-sm text-muted-foreground">
-          No tienes una caja abierta. Pide a un administrador que la abra por ti.
+          No hay una caja abierta. Pide a un administrador que la abra.
         </p>
       </div>
     )
@@ -156,8 +160,8 @@ function AbrirCajaInline({
     try {
       await abrirTurno(monto)
       await onAbierta()
-    } catch {
-      setError('No se pudo abrir la caja.')
+    } catch (err) {
+      setError(mensajeErrorCaja(err, 'No se pudo abrir la caja.'))
     } finally {
       setProcesando(false)
     }
@@ -169,9 +173,9 @@ function AbrirCajaInline({
         <Wallet size={26} />
       </div>
       <div>
-        <h2 className="font-serif text-xl font-semibold text-foreground">Abre tu caja para empezar</h2>
+        <h2 className="font-serif text-xl font-semibold text-foreground">Abrir la caja del hotel</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Registra el efectivo con el que arrancas el turno.
+          Hay un solo cajon compartido. Registra el efectivo con el que arranca el turno.
         </p>
       </div>
       <div className="flex w-full flex-col gap-2">
@@ -433,7 +437,7 @@ function VentaMostrador({
             </button>
           </div>
           {avisoStock && (
-            <p className="mt-2 text-xs font-medium text-amber-600">{avisoStock}</p>
+            <p className="mt-2 text-xs font-medium text-alerta-600">{avisoStock}</p>
           )}
         </div>
 

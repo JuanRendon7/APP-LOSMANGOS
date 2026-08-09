@@ -9,6 +9,7 @@ from slowapi.util import get_remote_address
 from src.auth.router import roles_router, usuarios_router
 from src.auth.router import router as auth_router
 from src.caja.router import gastos_router, turnos_router, ventas_router
+from src.configuracion.router import router as configuracion_router
 from src.consumo.router import router as consumo_router
 from src.hospedaje.router import habitaciones_router, huespedes_router, reservas_router
 from src.productos.router import productos_bar_router, productos_restaurante_router
@@ -73,3 +74,4 @@ app.include_router(consumo_router)
 app.include_router(turnos_router)
 app.include_router(gastos_router)
 app.include_router(ventas_router)
+app.include_router(configuracion_router)

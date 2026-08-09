@@ -104,10 +104,14 @@ export function ReservaDetailPanel({
     }
   }
 
+  const hayProximas = cargandoProximas || proximas.length > 0
+
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-serif text-lg font-semibold text-card-foreground">Habitacion {habitacion.numero}</h3>
+    <div className="rounded-lg border border-border bg-card p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="font-serif text-base font-semibold text-card-foreground">
+          Habitacion {habitacion.numero}
+        </h3>
         <button onClick={onCerrar} className="text-xs text-muted-foreground hover:underline">
           Cerrar
         </button>
@@ -117,19 +121,26 @@ export function ReservaDetailPanel({
 
       {habitacion.estado === 'OCUPADA' && habitacion.reserva_activa && (
         <div className="space-y-2 text-sm">
-          <p className="font-medium text-foreground">
-            {habitacion.reserva_activa.huesped.nombre}
-          </p>
-          <p className="text-muted-foreground">
-            CC {habitacion.reserva_activa.huesped.cedula} · {habitacion.reserva_activa.huesped.contacto}
-          </p>
-          {habitacion.reserva_activa.huesped.placa && (
-            <p className="text-muted-foreground">Placa {habitacion.reserva_activa.huesped.placa}</p>
-          )}
-          <p className="text-muted-foreground">
-            Desde {habitacion.reserva_activa.fecha_checkin_prevista} hasta{' '}
-            {habitacion.reserva_activa.fecha_checkout_prevista}
-          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span className="font-medium text-foreground">
+              {habitacion.reserva_activa.huesped.nombre}
+            </span>
+            <span className="text-muted-foreground">
+              CC {habitacion.reserva_activa.huesped.cedula}
+            </span>
+            <span className="text-muted-foreground">
+              {habitacion.reserva_activa.huesped.contacto}
+            </span>
+            {habitacion.reserva_activa.huesped.placa && (
+              <span className="text-muted-foreground">
+                Placa {habitacion.reserva_activa.huesped.placa}
+              </span>
+            )}
+            <span className="text-muted-foreground">
+              {habitacion.reserva_activa.fecha_checkin_prevista} →{' '}
+              {habitacion.reserva_activa.fecha_checkout_prevista}
+            </span>
+          </div>
           {puedeEditarReservas && (
             <div className="flex flex-wrap items-center gap-2">
               <select
@@ -160,8 +171,8 @@ export function ReservaDetailPanel({
       )}
 
       {habitacion.estado !== 'OCUPADA' && (
-        <div className="space-y-3 text-sm">
-          <div className="flex flex-wrap gap-2">
+        <div className="space-y-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
             {(habitacion.estado === 'LIMPIEZA' || habitacion.estado === 'MANTENIMIENTO') &&
               puedeEditarHabitaciones && (
                 <button
@@ -187,24 +198,29 @@ export function ReservaDetailPanel({
                 Nueva reserva
               </button>
             )}
+            {!hayProximas && (
+              <span className="text-xs text-muted-foreground">Sin reservas pendientes.</span>
+            )}
           </div>
 
-          <div>
-            <h4 className="mb-1 text-xs font-medium text-muted-foreground">Proximas reservas</h4>
-            {cargandoProximas && <p className="text-xs text-muted-foreground">Cargando...</p>}
-            {!cargandoProximas && proximas.length === 0 && (
-              <p className="text-xs text-muted-foreground">Sin reservas pendientes.</p>
-            )}
-            <ul className="space-y-2">
+          {hayProximas && (
+            <ul className="space-y-1.5">
+              {cargandoProximas && <li className="text-xs text-muted-foreground">Cargando...</li>}
               {proximas.map((reserva) => (
-                <li key={reserva.id_reserva} className="rounded-md border border-border p-2">
-                  <p className="font-medium text-foreground">{reserva.huesped.nombre}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {reserva.fecha_checkin_prevista} - {reserva.fecha_checkout_prevista} ·{' '}
-                    {formatoMoneda.format(reserva.precio_total)}
-                  </p>
+                <li
+                  key={reserva.id_reserva}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5"
+                >
+                  <span className="truncate text-xs">
+                    <span className="font-medium text-foreground">{reserva.huesped.nombre}</span>
+                    <span className="text-muted-foreground">
+                      {' '}
+                      · {reserva.fecha_checkin_prevista} - {reserva.fecha_checkout_prevista} ·{' '}
+                      {formatoMoneda.format(reserva.precio_total)}
+                    </span>
+                  </span>
                   {puedeEditarReservas && (
-                    <div className="mt-1 flex gap-2">
+                    <div className="flex shrink-0 gap-2">
                       <button
                         onClick={() => manejarCheckIn(reserva.id_reserva)}
                         className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"
@@ -222,7 +238,7 @@ export function ReservaDetailPanel({
                 </li>
               ))}
             </ul>
-          </div>
+          )}
         </div>
       )}
     </div>

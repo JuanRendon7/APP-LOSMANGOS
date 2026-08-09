@@ -45,6 +45,48 @@
   --color-oro-500: oklch(0.64 0.11 75);
   --color-oro-600: oklch(0.54 0.11 72);
 
+  /* Colores de estado: unico lugar que define exito/alerta/peligro/info para toda
+     la app (frontend/src/shared/ui/estado.ts consume estos tokens). Mismo criterio
+     de croma/luminosidad que marca/mango/oro, no el arcoiris saturado por defecto
+     de Tailwind. "alerta" se corrio lejos del hue de oro (72-80) a proposito, para
+     que un acento dorado decorativo nunca se confunda con una insignia de
+     advertencia. */
+  --color-exito-50: oklch(0.965 0.02 160);
+  --color-exito-100: oklch(0.92 0.05 160);
+  --color-exito-300: oklch(0.78 0.1 160);
+  --color-exito-500: oklch(0.6 0.13 160);
+  --color-exito-600: oklch(0.5 0.13 160);
+  --color-exito-700: oklch(0.4 0.11 160);
+  --color-exito-800: oklch(0.32 0.09 160);
+  --color-exito-900: oklch(0.24 0.07 160);
+
+  --color-alerta-50: oklch(0.97 0.025 60);
+  --color-alerta-100: oklch(0.93 0.06 58);
+  --color-alerta-300: oklch(0.82 0.11 55);
+  --color-alerta-500: oklch(0.68 0.15 50);
+  --color-alerta-600: oklch(0.58 0.15 48);
+  --color-alerta-700: oklch(0.48 0.14 46);
+  --color-alerta-800: oklch(0.38 0.1 45);
+  --color-alerta-900: oklch(0.28 0.08 42);
+
+  --color-peligro-50: oklch(0.97 0.02 27);
+  --color-peligro-100: oklch(0.93 0.05 27);
+  --color-peligro-300: oklch(0.8 0.1 27);
+  --color-peligro-500: oklch(0.577 0.19 27);
+  --color-peligro-600: oklch(0.5 0.18 27);
+  --color-peligro-700: oklch(0.42 0.16 26);
+  --color-peligro-800: oklch(0.34 0.13 25);
+  --color-peligro-900: oklch(0.26 0.1 24);
+
+  --color-info-50: oklch(0.97 0.015 255);
+  --color-info-100: oklch(0.93 0.04 255);
+  --color-info-300: oklch(0.8 0.08 255);
+  --color-info-500: oklch(0.62 0.15 255);
+  --color-info-600: oklch(0.52 0.16 255);
+  --color-info-700: oklch(0.44 0.15 255);
+  --color-info-800: oklch(0.35 0.12 255);
+  --color-info-900: oklch(0.27 0.09 255);
+
   --font-sans: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
 
@@ -58,7 +100,7 @@
   --color-muted-foreground: var(--color-marca-500);
   --color-accent: var(--color-marca-200);
   --color-accent-foreground: var(--color-marca-900);
-  --color-destructive: oklch(0.577 0.19 27);
+  --color-destructive: var(--color-peligro-500);
   --color-destructive-foreground: oklch(0.99 0.006 80);
   --color-border: var(--color-marca-200);
   --color-input: var(--color-marca-200);

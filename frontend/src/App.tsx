@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { CajaPage } from '@/features/caja/CajaPage'
 import { VenderPage } from '@/features/caja/VenderPage'
+import { ConfiguracionPage } from '@/features/configuracion/ConfiguracionPage'
 import { HabitacionesPage } from '@/features/hospedaje/HabitacionesPage'
 import { ProductosBarPage } from '@/features/productos/ProductosBarPage'
 import { ProductosRestaurantePage } from '@/features/productos/ProductosRestaurantePage'
@@ -122,6 +123,18 @@ export default function App() {
               <AppShell>
                 <RequierePermiso recurso="USUARIOS" accion="VER">
                   <UsuariosPage />
+                </RequierePermiso>
+              </AppShell>
+            </RequiereSesion>
+          }
+        />
+        <Route
+          path="/configuracion"
+          element={
+            <RequiereSesion>
+              <AppShell>
+                <RequierePermiso recurso="CONFIGURACION" accion="VER">
+                  <ConfiguracionPage />
                 </RequierePermiso>
               </AppShell>
             </RequiereSesion>

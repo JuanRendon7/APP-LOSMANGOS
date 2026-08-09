@@ -228,7 +228,7 @@ export function CajaTab({ desde, hasta }: Props) {
                       {new Date(t.creado_en).toLocaleDateString('es-CO')}
                     </span>
                     <span
-                      className={`shrink-0 font-medium ${diferencia > 0 ? 'text-blue-700' : 'text-red-700'}`}
+                      className={`shrink-0 font-medium ${diferencia > 0 ? 'text-info-700' : 'text-peligro-700'}`}
                     >
                       {diferencia > 0 ? '+' : ''}
                       {formatoMoneda.format(diferencia)}

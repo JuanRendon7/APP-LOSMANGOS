@@ -176,16 +176,14 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
         </div>
       )}
 
-      <div className="text-sm">
-        <p className="text-muted-foreground">
-          Hospedaje: {formatoMoneda.format(precioHospedaje)}
-        </p>
-        <p className="text-muted-foreground">
-          Consumo: {formatoMoneda.format(resumen.total)}
-        </p>
-        <p className="font-serif text-lg font-semibold text-foreground">
-          Total: {formatoMoneda.format(totalGeneral)}
-        </p>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-sm">
+        <span className="text-xs text-muted-foreground">
+          Hospedaje {formatoMoneda.format(precioHospedaje)} · Consumo{' '}
+          {formatoMoneda.format(resumen.total)}
+        </span>
+        <span className="font-serif text-lg font-semibold text-foreground">
+          Total {formatoMoneda.format(totalGeneral)}
+        </span>
       </div>
     </div>
   )

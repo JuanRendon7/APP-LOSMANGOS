@@ -14,6 +14,7 @@ class TurnoCajaCerrar(BaseModel):
 class TurnoCajaResponse(BaseModel):
     id_turno: int
     id_usuario: int
+    nombre_usuario: str
     estado: str
     monto_apertura: int
     monto_cierre_real: int | None

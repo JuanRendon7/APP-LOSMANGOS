@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { apiClient } from '@/shared/api/client'
 import type {
   EstadoTurno,
@@ -8,6 +9,13 @@ import type {
   Venta,
   VentaMostradorItemInput,
 } from './types'
+
+export function mensajeErrorCaja(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err) && typeof err.response?.data?.detail === 'string') {
+    return err.response.data.detail
+  }
+  return fallback
+}
 
 export async function obtenerTurnoActual(): Promise<TurnoCaja | null> {
   const { data } = await apiClient.get<TurnoCaja | null>('/caja/turnos/actual')

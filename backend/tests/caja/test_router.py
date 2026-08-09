@@ -107,6 +107,60 @@ def test_no_se_puede_abrir_dos_turnos_a_la_vez(client, usuario_admin):
     assert resp.status_code == 422
 
 
+def test_otro_usuario_no_puede_abrir_turno_mientras_hay_uno_abierto(
+    client, usuario_admin, usuario_empleado
+):
+    """El hotel tiene un solo cajon fisico: si alguien ya abrio la caja, nadie
+    mas puede abrir otra encima, sin importar con que usuario entre."""
+    headers_admin = auth_headers(token_para(client, usuario_admin.email))
+    headers_empleado = auth_headers(token_para(client, usuario_empleado.email))
+    _abrir_turno(client, headers_admin)
+
+    resp = client.post(
+        "/caja/turnos", headers=headers_empleado, json={"monto_apertura": 20000}
+    )
+    assert resp.status_code == 422
+    assert usuario_admin.nombre in resp.json()["detail"]
+
+
+def test_cualquier_usuario_ve_y_vende_sobre_la_caja_abierta_por_otro(
+    client, usuario_admin, usuario_empleado
+):
+    """La caja es compartida: si el admin la abrio, un empleado que entre debe
+    ver ese mismo turno (no que 'no tiene caja abierta') y puede vender y
+    cerrarla el, aunque no la haya abierto."""
+    headers_admin = auth_headers(token_para(client, usuario_admin.email))
+    headers_empleado = auth_headers(token_para(client, usuario_empleado.email))
+    turno = _abrir_turno(client, headers_admin, 50000)
+
+    actual = client.get("/caja/turnos/actual", headers=headers_empleado)
+    assert actual.status_code == 200
+    assert actual.json()["id_turno"] == turno["id_turno"]
+    assert actual.json()["nombre_usuario"] == usuario_admin.nombre
+
+    producto = _crear_producto_bar(client, headers_admin, "9400001", stock=10)
+    venta = client.post(
+        "/caja/ventas/mostrador",
+        headers=headers_empleado,
+        json={
+            "items": [
+                {"origen": "BAR", "id_producto": producto["id_producto"], "cantidad": 1}
+            ],
+            "metodo_pago": "EFECTIVO",
+        },
+    )
+    assert venta.status_code == 201, venta.text
+    assert venta.json()["id_turno_caja"] == turno["id_turno"]
+
+    cierre = client.post(
+        f"/caja/turnos/{turno['id_turno']}/cerrar",
+        headers=headers_empleado,
+        json={"monto_cierre_real": 55000},
+    )
+    assert cierre.status_code == 200, cierre.text
+    assert cierre.json()["estado"] == "CERRADO"
+
+
 def test_registrar_gasto_sin_turno_abierto_falla(client, usuario_admin):
     headers = auth_headers(token_para(client, usuario_admin.email))
     resp = client.post(

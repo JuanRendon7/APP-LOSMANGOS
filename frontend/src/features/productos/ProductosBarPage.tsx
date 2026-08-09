@@ -1,6 +1,7 @@
 import { Beer, CircleCheck, Coins, PackageX, Search, TriangleAlert } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { ESTILO_TONO } from '@/shared/ui/estado'
 import { AjustarStockModal } from './AjustarStockModal'
 import { actualizarProductoBar, listarProductosBar } from './api'
 import { ProductoBarFormModal } from './ProductoBarFormModal'
@@ -15,9 +16,9 @@ const formatoMoneda = new Intl.NumberFormat('es-CO', {
 const STOCK_BAJO_UMBRAL = 5
 
 function estiloStock(stock: number): string {
-  if (stock <= 0) return 'bg-red-100 text-red-800'
-  if (stock <= STOCK_BAJO_UMBRAL) return 'bg-amber-100 text-amber-800'
-  return 'bg-emerald-100 text-emerald-800'
+  if (stock <= 0) return ESTILO_TONO.peligro.badge
+  if (stock <= STOCK_BAJO_UMBRAL) return ESTILO_TONO.alerta.badge
+  return ESTILO_TONO.exito.badge
 }
 
 export function ProductosBarPage() {
@@ -116,7 +117,7 @@ export function ProductosBarPage() {
           onClick={() => setSoloActivos((valor) => !valor)}
           className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
             soloActivos
-              ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+              ? ESTILO_TONO.exito.chipActivo
               : 'border-border text-muted-foreground hover:bg-secondary'
           }`}
         >
@@ -125,7 +126,7 @@ export function ProductosBarPage() {
         <span
           className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${
             stockBajo.length > 0
-              ? 'border-amber-300 bg-amber-50 text-amber-800'
+              ? 'border-alerta-300 bg-alerta-50 text-alerta-800'
               : 'border-border text-muted-foreground'
           }`}
         >
@@ -139,8 +140,8 @@ export function ProductosBarPage() {
       </div>
 
       {stockBajo.length > 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
-          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-800">
+        <div className="rounded-lg border border-alerta-300 bg-alerta-50 p-3">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-alerta-800">
             <TriangleAlert size={14} /> Productos con stock bajo
           </div>
           <ul className="flex flex-wrap gap-2">
@@ -148,10 +149,10 @@ export function ProductosBarPage() {
               <li key={producto.id_producto}>
                 <button
                   onClick={() => setAjustandoStock(producto)}
-                  className="flex items-center gap-1.5 rounded-md border border-amber-300 bg-white px-2.5 py-1 text-sm font-medium text-amber-900 hover:bg-amber-100"
+                  className="flex items-center gap-1.5 rounded-md border border-alerta-300 bg-white px-2.5 py-1 text-sm font-medium text-alerta-900 hover:bg-alerta-100"
                 >
                   {producto.stock <= 0 ? (
-                    <PackageX size={14} className="text-red-600" />
+                    <PackageX size={14} className="text-peligro-600" />
                   ) : (
                     <TriangleAlert size={14} />
                   )}
@@ -235,7 +236,7 @@ export function ProductosBarPage() {
                   <span
                     className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
                       producto.activo
-                        ? 'bg-emerald-100 text-emerald-800'
+                        ? ESTILO_TONO.exito.badge
                         : 'bg-muted text-muted-foreground'
                     }`}
                   >

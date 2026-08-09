@@ -4,6 +4,7 @@ Uso: `uv run python -m src.seed`
 """
 
 from src.auth.models import Permiso, Recurso, Rol, RolPermiso, Usuario, UsuarioRol
+from src.configuracion.models import ConfiguracionApp
 from src.hospedaje.models import Habitacion
 from src.shared.config import get_settings
 from src.shared.database import SessionLocal
@@ -29,6 +30,7 @@ RECURSOS_ACCIONES = {
     "USUARIOS": ["VER", "CREAR", "EDITAR", "ELIMINAR"],
     "ROLES": ["VER", "EDITAR"],
     "BOOKING_SYNC": ["VER", "CREAR", "EDITAR"],
+    "CONFIGURACION": ["VER", "EDITAR"],
 }
 
 EMPLEADO_PERMISOS = {
@@ -42,6 +44,11 @@ EMPLEADO_PERMISOS = {
     "VENTAS": ["VER", "CREAR"],
     "CAJA": ["VER", "CREAR", "CERRAR"],
     "GASTOS": ["VER", "CREAR"],
+    "CONFIGURACION": ["VER"],
+}
+
+CONFIGURACION_POR_DEFECTO = {
+    "sonido_notificacion": "campana",
 }
 
 
@@ -145,6 +152,15 @@ def seed() -> None:
         )
         if tiene_rol_admin is None:
             db.add(UsuarioRol(id_usuario=admin.id_usuario, id_rol=rol_admin.id_rol))
+
+        for clave, valor in CONFIGURACION_POR_DEFECTO.items():
+            existe = (
+                db.query(ConfiguracionApp)
+                .filter(ConfiguracionApp.clave == clave)
+                .one_or_none()
+            )
+            if existe is None:
+                db.add(ConfiguracionApp(clave=clave, valor=valor))
 
         for numero, piso in HABITACIONES:
             existe = (

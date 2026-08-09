@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Controller, type Control, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { buscarHuespedes, crearReserva } from './api'
-import type { Habitacion } from './types'
+import type { Habitacion, Huesped } from './types'
 
 const reservaSchema = z
   .object({
@@ -65,6 +65,8 @@ interface Props {
 
 export function ReservaFormModal({ habitacion, onCerrar, onCreada }: Props) {
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null)
+  const [sugerencias, setSugerencias] = useState<Huesped[]>([])
+  const [sugerenciasAbiertas, setSugerenciasAbiertas] = useState(false)
 
   const {
     control,
@@ -85,7 +87,17 @@ export function ReservaFormModal({ habitacion, onCerrar, onCreada }: Props) {
   })
 
   const cedula = watch('cedula')
+  const nombre = watch('nombre')
 
+  const aplicarHuesped = (huesped: Huesped) => {
+    setValue('cedula', huesped.cedula)
+    setValue('nombre', huesped.nombre)
+    setValue('contacto', huesped.contacto)
+    setValue('placa', huesped.placa ?? '')
+    setSugerenciasAbiertas(false)
+  }
+
+  // Autollenado por cedula exacta: recepcion suele digitar la cedula primero.
   useEffect(() => {
     if (cedula.trim().length < 5) return
     const timeout = setTimeout(async () => {
@@ -103,6 +115,23 @@ export function ReservaFormModal({ habitacion, onCerrar, onCreada }: Props) {
     }, 400)
     return () => clearTimeout(timeout)
   }, [cedula, setValue])
+
+  // Sugerencias por nombre: para cuando no se recuerda la cedula exacta.
+  useEffect(() => {
+    if (nombre.trim().length < 3) {
+      setSugerencias([])
+      return
+    }
+    const timeout = setTimeout(async () => {
+      try {
+        const resultados = await buscarHuespedes(nombre.trim())
+        setSugerencias(resultados.slice(0, 6))
+      } catch {
+        setSugerencias([])
+      }
+    }, 350)
+    return () => clearTimeout(timeout)
+  }, [nombre])
 
   const onSubmit = async (datos: ReservaForm) => {
     setErrorGeneral(null)
@@ -136,7 +165,55 @@ export function ReservaFormModal({ habitacion, onCerrar, onCreada }: Props) {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <Campo label="Cedula" name="cedula" control={control} error={errors.cedula?.message} />
-          <Campo label="Nombre" name="nombre" control={control} error={errors.nombre?.message} />
+
+          <div className="relative">
+            <label htmlFor="nombre" className="mb-1 block text-sm font-medium text-foreground">
+              Nombre
+            </label>
+            <Controller
+              name="nombre"
+              control={control}
+              render={({ field }) => (
+                <input
+                  {...field}
+                  value={field.value ?? ''}
+                  id="nombre"
+                  autoComplete="off"
+                  onFocus={() => setSugerenciasAbiertas(true)}
+                  onChange={(e) => {
+                    field.onChange(e)
+                    setSugerenciasAbiertas(true)
+                  }}
+                  onBlur={() => {
+                    field.onBlur()
+                    setTimeout(() => setSugerenciasAbiertas(false), 150)
+                  }}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+              )}
+            />
+            {errors.nombre && (
+              <p className="mt-1 text-sm text-destructive">{errors.nombre.message}</p>
+            )}
+            {sugerenciasAbiertas && sugerencias.length > 0 && (
+              <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                {sugerencias.map((huesped) => (
+                  <li key={huesped.id_huesped}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => aplicarHuesped(huesped)}
+                      className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm hover:bg-secondary"
+                    >
+                      <span className="font-medium text-foreground">{huesped.nombre}</span>
+                      <span className="text-xs text-muted-foreground">CC {huesped.cedula}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
           <Campo
             label="Contacto"
             name="contacto"

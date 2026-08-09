@@ -27,8 +27,8 @@ class CajaService:
 
     # Turnos
 
-    def turno_actual(self, id_usuario: int) -> TurnoCaja | None:
-        return self.repository.obtener_turno_abierto(id_usuario)
+    def turno_actual(self) -> TurnoCaja | None:
+        return self.repository.obtener_turno_abierto()
 
     def listar_turnos(
         self,
@@ -40,8 +40,12 @@ class CajaService:
         return self.repository.listar_turnos(id_usuario, estado, desde, hasta)
 
     def abrir_turno(self, id_usuario: int, monto_apertura: int) -> TurnoCaja:
-        if self.repository.obtener_turno_abierto(id_usuario) is not None:
-            raise BusinessRuleError("Ya tienes una caja abierta")
+        turno_abierto = self.repository.obtener_turno_abierto()
+        if turno_abierto is not None:
+            raise BusinessRuleError(
+                f"Ya hay una caja abierta (por {turno_abierto.usuario.nombre}). "
+                "Debe cerrarse antes de abrir una nueva."
+            )
         turno = TurnoCaja(id_usuario=id_usuario, monto_apertura=monto_apertura)
         return self.repository.crear_turno(turno)
 
@@ -56,10 +60,10 @@ class CajaService:
         turno.fecha_cierre = datetime.now(UTC)
         return turno
 
-    def _turno_abierto_de(self, id_usuario: int) -> TurnoCaja:
-        turno = self.repository.obtener_turno_abierto(id_usuario)
+    def _turno_abierto(self) -> TurnoCaja:
+        turno = self.repository.obtener_turno_abierto()
         if turno is None:
-            raise BusinessRuleError("No tienes una caja abierta, abrela primero")
+            raise BusinessRuleError("No hay una caja abierta, abrela primero")
         return turno
 
     # Gastos
@@ -68,7 +72,7 @@ class CajaService:
         return self.repository.listar_gastos(id_turno)
 
     def registrar_gasto(self, id_usuario: int, datos: GastoCreate) -> Gasto:
-        turno = self._turno_abierto_de(id_usuario)
+        turno = self._turno_abierto()
         gasto = Gasto(
             id_turno_caja=turno.id_turno,
             concepto=datos.concepto,
@@ -115,7 +119,7 @@ class CajaService:
         self, id_usuario: int, id_reserva: int, metodo_pago: str
     ) -> Venta:
         self._validar_metodo_pago(metodo_pago)
-        turno = self._turno_abierto_de(id_usuario)
+        turno = self._turno_abierto()
         consumo_items = self.consumo_repository.listar_por_reserva(id_reserva)
         total_consumo = sum(i.cantidad * i.precio_unitario for i in consumo_items)
         reserva = self.hospedaje_service.check_out(id_reserva)
@@ -131,7 +135,7 @@ class CajaService:
 
     def cobrar_pedido(self, id_usuario: int, id_pedido: int, metodo_pago: str) -> Venta:
         self._validar_metodo_pago(metodo_pago)
-        turno = self._turno_abierto_de(id_usuario)
+        turno = self._turno_abierto()
         pedido = self.restaurante_service.obtener_pedido(id_pedido)
         total = sum(item.cantidad * item.precio_unitario for item in pedido.items)
         if total == 0:
@@ -154,7 +158,7 @@ class CajaService:
         metodo_pago: str,
     ) -> Venta:
         self._validar_metodo_pago(metodo_pago)
-        turno = self._turno_abierto_de(id_usuario)
+        turno = self._turno_abierto()
         if not items:
             raise BusinessRuleError("La venta debe tener al menos un producto")
 
@@ -203,8 +207,8 @@ class CajaService:
         venta.monto = total
         return venta
 
-    def deshacer_ultima_venta(self, id_usuario: int) -> Venta:
-        turno = self._turno_abierto_de(id_usuario)
+    def deshacer_ultima_venta(self) -> Venta:
+        turno = self._turno_abierto()
         ventas = self.repository.listar_ventas(turno.id_turno, None, None)
         if not ventas:
             raise BusinessRuleError("No hay ventas para deshacer en este turno")

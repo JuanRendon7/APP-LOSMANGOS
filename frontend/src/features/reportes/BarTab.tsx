@@ -129,15 +129,15 @@ export function BarTab({ desde, hasta }: Props) {
       </div>
 
       {stockBajo.length > 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
-          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-800">
+        <div className="rounded-lg border border-alerta-300 bg-alerta-50 p-3">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-alerta-800">
             <TriangleAlert size={14} /> Productos con stock bajo ahora
           </div>
           <ul className="flex flex-wrap gap-2">
             {stockBajo.map((p) => (
               <li
                 key={p.id_producto}
-                className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-sm font-medium text-amber-900"
+                className="rounded-md border border-alerta-300 bg-white px-2.5 py-1 text-sm font-medium text-alerta-900"
               >
                 {p.nombre} · {p.stock} und.
               </li>

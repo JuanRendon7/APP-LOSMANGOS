@@ -1,5 +1,6 @@
 import { BedDouble, LogIn, LogOut, Sparkles, UserRound, Wrench, type LucideIcon } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ESTILO_TONO } from '@/shared/ui/estado'
 import { actualizarEstadoHabitacion, listarHabitaciones, listarReservas } from './api'
 import { ReservaDetailPanel } from './ReservaDetailPanel'
 import { ReservaFormModal } from './ReservaFormModal'
@@ -8,45 +9,62 @@ import type { EstadoHabitacion, Habitacion, Reserva } from './types'
 interface EstadoConfig {
   label: string
   icon: LucideIcon
-  accent: string
+  marco: string
   badge: string
-  dot: string
   chipActivo: string
 }
 
 const ESTADO_CONFIG: Record<EstadoHabitacion, EstadoConfig> = {
-  DISPONIBLE: {
-    label: 'Disponible',
-    icon: BedDouble,
-    accent: 'border-l-emerald-500',
-    badge: 'bg-emerald-100 text-emerald-800',
-    dot: 'bg-emerald-500',
-    chipActivo: 'border-emerald-500 bg-emerald-50 text-emerald-800',
-  },
-  OCUPADA: {
-    label: 'Ocupada',
-    icon: UserRound,
-    accent: 'border-l-blue-500',
-    badge: 'bg-blue-100 text-blue-800',
-    dot: 'bg-blue-500',
-    chipActivo: 'border-blue-500 bg-blue-50 text-blue-800',
-  },
-  LIMPIEZA: {
-    label: 'Limpieza',
-    icon: Sparkles,
-    accent: 'border-l-amber-500',
-    badge: 'bg-amber-100 text-amber-800',
-    dot: 'bg-amber-500',
-    chipActivo: 'border-amber-500 bg-amber-50 text-amber-800',
-  },
-  MANTENIMIENTO: {
-    label: 'Mantenimiento',
-    icon: Wrench,
-    accent: 'border-l-red-500',
-    badge: 'bg-red-100 text-red-800',
-    dot: 'bg-red-500',
-    chipActivo: 'border-red-500 bg-red-50 text-red-800',
-  },
+  DISPONIBLE: { label: 'Disponible', icon: BedDouble, ...ESTILO_TONO.exito },
+  OCUPADA: { label: 'Ocupada', icon: UserRound, ...ESTILO_TONO.info },
+  LIMPIEZA: { label: 'Limpieza', icon: Sparkles, ...ESTILO_TONO.alerta },
+  MANTENIMIENTO: { label: 'Mantenimiento', icon: Wrench, ...ESTILO_TONO.peligro },
+}
+
+function PuertaIlustrada({
+  numero,
+  cfg,
+  seleccionada,
+}: {
+  numero: string
+  cfg: EstadoConfig
+  seleccionada: boolean
+}) {
+  const Icono = cfg.icon
+  return (
+    <div
+      className={`relative aspect-[4/5] w-full overflow-hidden rounded-t-lg rounded-b-sm border-2 shadow-sm transition-shadow ${cfg.marco} ${
+        seleccionada ? 'ring-4 ring-ring ring-offset-2 ring-offset-background' : ''
+      }`}
+      style={{
+        background:
+          'radial-gradient(circle at 30% 22%, var(--color-marca-100), var(--color-marca-300) 60%, var(--color-marca-500) 100%)',
+      }}
+    >
+      <div
+        className="absolute inset-2.5 rounded-md border"
+        style={{ borderColor: 'var(--color-marca-600)', opacity: 0.18 }}
+      />
+      <div className="absolute left-1/2 top-2.5 -translate-x-1/2 rounded-md border border-marca-300 bg-marca-50 px-2 py-0.5 shadow-sm">
+        <span className="font-serif text-sm font-bold leading-none text-marca-900">{numero}</span>
+      </div>
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center leading-tight text-mango-700 opacity-80">
+        <span className="block font-serif text-[9px] italic tracking-[0.15em]">Hotel</span>
+        <span className="block text-[7px] font-semibold uppercase tracking-[0.2em]">Los Mangos</span>
+      </div>
+      <div
+        className="absolute right-2.5 top-1/2 h-2.5 w-2.5 -translate-y-1/2 rounded-full shadow"
+        style={{
+          background: 'radial-gradient(circle at 35% 30%, var(--color-oro-300), var(--color-oro-600))',
+        }}
+      />
+      <div
+        className={`absolute -right-1.5 -top-1.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-background shadow ${cfg.badge}`}
+      >
+        <Icono size={12} />
+      </div>
+    </div>
+  )
 }
 
 const ORDEN_ESTADOS: EstadoHabitacion[] = ['DISPONIBLE', 'OCUPADA', 'LIMPIEZA', 'MANTENIMIENTO']
@@ -65,6 +83,7 @@ export function HabitacionesPage() {
   const [refreshToken, setRefreshToken] = useState(0)
   const [filtro, setFiltro] = useState<EstadoHabitacion | 'TODAS'>('TODAS')
   const [llegadasHoy, setLlegadasHoy] = useState<Reserva[]>([])
+  const panelRef = useRef<HTMLDivElement>(null)
 
   const recargar = useCallback(async () => {
     try {
@@ -89,6 +108,12 @@ export function HabitacionesPage() {
       .then((datos) => setLlegadasHoy(datos.filter((r) => r.fecha_checkin_prevista === hoy)))
       .catch(() => {})
   }, [refreshToken])
+
+  useEffect(() => {
+    if (idSeleccionada !== null) {
+      panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [idSeleccionada])
 
   const seleccionada = habitaciones.find((h) => h.id_habitacion === idSeleccionada) ?? null
 
@@ -135,6 +160,19 @@ export function HabitacionesPage() {
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      {seleccionada && (
+        <div ref={panelRef} className="scroll-mt-20">
+          <ReservaDetailPanel
+            habitacion={seleccionada}
+            refreshToken={refreshToken}
+            onCerrar={() => setIdSeleccionada(null)}
+            onCambiarEstado={(estado) => cambiarEstado(seleccionada, estado)}
+            onNuevaReserva={() => setMostrarFormReserva(true)}
+            onActualizado={recargar}
+          />
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <button
@@ -222,42 +260,38 @@ export function HabitacionesPage() {
         return (
           <div key={piso} className="space-y-2">
             <h2 className="text-sm font-medium text-muted-foreground">Piso {piso}</h2>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-6">
               {habitacionesPiso.map((habitacion) => {
                 const cfg = ESTADO_CONFIG[habitacion.estado]
-                const Icono = cfg.icon
                 const saleHoy = habitacion.reserva_activa?.fecha_checkout_prevista === hoy
                 return (
                   <button
                     key={habitacion.id_habitacion}
                     onClick={() => setIdSeleccionada(habitacion.id_habitacion)}
-                    className={`rounded-lg border border-l-4 bg-card p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${cfg.accent} ${
-                      idSeleccionada === habitacion.id_habitacion
-                        ? 'border-border ring-2 ring-ring'
-                        : 'border-border'
-                    }`}
+                    className="group flex flex-col text-left transition-transform hover:-translate-y-1"
                   >
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <span className="font-serif text-xl font-semibold text-card-foreground">
-                        {habitacion.numero}
+                    <PuertaIlustrada
+                      numero={habitacion.numero}
+                      cfg={cfg}
+                      seleccionada={idSeleccionada === habitacion.id_habitacion}
+                    />
+                    <div className="space-y-1 rounded-b-lg border border-t-0 border-border bg-card px-2 py-1.5">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${cfg.badge}`}
+                      >
+                        {cfg.label}
                       </span>
-                      <Icono size={16} className="text-muted-foreground" />
+                      {habitacion.reserva_activa && (
+                        <div className="truncate text-xs text-muted-foreground">
+                          {habitacion.reserva_activa.huesped.nombre}
+                        </div>
+                      )}
+                      {saleHoy && (
+                        <div className="inline-flex items-center gap-1 rounded-full bg-alerta-100 px-1.5 py-0.5 text-[10px] font-medium text-alerta-800">
+                          <LogOut size={10} /> Sale hoy
+                        </div>
+                      )}
                     </div>
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${cfg.badge}`}
-                    >
-                      {cfg.label}
-                    </span>
-                    {habitacion.reserva_activa && (
-                      <div className="mt-1.5 truncate text-xs text-muted-foreground">
-                        {habitacion.reserva_activa.huesped.nombre}
-                      </div>
-                    )}
-                    {saleHoy && (
-                      <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-red-100 px-1.5 py-0.5 text-[10px] font-medium text-red-800">
-                        <LogOut size={10} /> Sale hoy
-                      </div>
-                    )}
                   </button>
                 )
               })}
@@ -265,17 +299,6 @@ export function HabitacionesPage() {
           </div>
         )
       })}
-
-      {seleccionada && (
-        <ReservaDetailPanel
-          habitacion={seleccionada}
-          refreshToken={refreshToken}
-          onCerrar={() => setIdSeleccionada(null)}
-          onCambiarEstado={(estado) => cambiarEstado(seleccionada, estado)}
-          onNuevaReserva={() => setMostrarFormReserva(true)}
-          onActualizado={recargar}
-        />
-      )}
 
       {mostrarFormReserva && seleccionada && (
         <ReservaFormModal

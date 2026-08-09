@@ -1,6 +1,7 @@
 import { CircleCheck, CircleSlash, Coins, Search, UtensilsCrossed } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { ESTILO_TONO } from '@/shared/ui/estado'
 import { actualizarProductoRestaurante, listarProductosRestaurante } from './api'
 import { ProductoRestauranteFormModal } from './ProductoRestauranteFormModal'
 import type { ProductoRestaurante } from './types'
@@ -97,7 +98,7 @@ export function ProductosRestaurantePage() {
           onClick={() => setSoloActivos((valor) => !valor)}
           className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
             soloActivos
-              ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+              ? ESTILO_TONO.exito.chipActivo
               : 'border-border text-muted-foreground hover:bg-secondary'
           }`}
         >
@@ -140,7 +141,7 @@ export function ProductosRestaurantePage() {
               <span
                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
                   producto.activo
-                    ? 'bg-emerald-100 text-emerald-800'
+                    ? ESTILO_TONO.exito.badge
                     : 'bg-muted text-muted-foreground'
                 }`}
               >

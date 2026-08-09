@@ -24,6 +24,7 @@ import {
   YAxis,
 } from 'recharts'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { ESTILO_TONO } from '@/shared/ui/estado'
 import {
   abrirTurno,
   actualizarGasto,
@@ -32,6 +33,7 @@ import {
   eliminarGasto,
   listarGastos,
   listarVentas,
+  mensajeErrorCaja,
   obtenerTurnoActual,
 } from './api'
 import type { Gasto, OrigenVenta, TurnoCaja, Venta } from './types'
@@ -175,7 +177,7 @@ function AbrirCajaCard({
   if (!puedeAbrir) {
     return (
       <div className="rounded-lg border border-border bg-card p-4">
-        <p className="text-sm text-muted-foreground">No tienes una caja abierta.</p>
+        <p className="text-sm text-muted-foreground">No hay una caja abierta.</p>
       </div>
     )
   }
@@ -186,8 +188,8 @@ function AbrirCajaCard({
     try {
       await abrirTurno(monto)
       await onAbierta()
-    } catch {
-      setError('No se pudo abrir la caja.')
+    } catch (err) {
+      setError(mensajeErrorCaja(err, 'No se pudo abrir la caja.'))
     } finally {
       setProcesando(false)
     }
@@ -260,7 +262,7 @@ function ResumenTurnoCard({ turno, ventas }: { turno: TurnoCaja; ventas: Venta[]
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 font-serif text-lg font-semibold text-card-foreground">
-          <Wallet size={18} className="text-primary" /> Turno actual
+          <Wallet size={18} className="text-primary" /> Turno actual · {turno.nombre_usuario}
         </h3>
         <span className="flex items-center gap-1 text-xs text-muted-foreground">
           <Clock size={13} /> Abierto hace {tiempoTranscurrido(turno.creado_en)}
@@ -579,10 +581,10 @@ function CerrarCajaCard({
       <div
         className={`mt-3 flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium ${
           diferencia === 0
-            ? 'bg-emerald-100 text-emerald-800'
+            ? ESTILO_TONO.exito.badge
             : diferencia > 0
-              ? 'bg-blue-100 text-blue-800'
-              : 'bg-red-100 text-red-800'
+              ? ESTILO_TONO.info.badge
+              : ESTILO_TONO.peligro.badge
         }`}
       >
         <Percent size={14} />

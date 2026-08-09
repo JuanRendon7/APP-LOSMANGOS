@@ -42,6 +42,7 @@ def _turno_response(turno: TurnoCaja) -> TurnoCajaResponse:
     return TurnoCajaResponse(
         id_turno=turno.id_turno,
         id_usuario=turno.id_usuario,
+        nombre_usuario=turno.usuario.nombre,
         estado=turno.estado,
         monto_apertura=turno.monto_apertura,
         monto_cierre_real=turno.monto_cierre_real,
@@ -86,10 +87,10 @@ turnos_router = APIRouter(prefix="/caja/turnos", tags=["caja"])
 
 @turnos_router.get("/actual", response_model=TurnoCajaResponse | None)
 def turno_actual(
-    actor: UsuarioActual = Depends(requiere_permiso("CAJA", "VER")),
+    _: UsuarioActual = Depends(requiere_permiso("CAJA", "VER")),
     servicio: CajaService = Depends(get_caja_service),
 ):
-    turno = servicio.turno_actual(actor.id_usuario)
+    turno = servicio.turno_actual()
     return _turno_response(turno) if turno else None
 
 
@@ -328,11 +329,11 @@ def venta_mostrador(
 @ventas_router.post("/deshacer-ultima", response_model=VentaResponse)
 def deshacer_ultima_venta(
     db: Session = Depends(get_db),
-    actor: UsuarioActual = Depends(requiere_permiso("VENTAS", "EDITAR")),
+    _: UsuarioActual = Depends(requiere_permiso("VENTAS", "EDITAR")),
     servicio: CajaService = Depends(get_caja_service),
 ):
     try:
-        venta = servicio.deshacer_ultima_venta(actor.id_usuario)
+        venta = servicio.deshacer_ultima_venta()
         respuesta = _venta_response(venta)
         db.commit()
     except NotFoundError as exc:

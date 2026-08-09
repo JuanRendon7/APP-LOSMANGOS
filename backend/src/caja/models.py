@@ -4,6 +4,7 @@ from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from src.auth.models import Usuario
 from src.productos.models import ProductoBar, ProductoRestaurante
 from src.shared.database import Base, TimestampMixin
 
@@ -29,6 +30,7 @@ class TurnoCaja(Base, TimestampMixin):
 
     ventas: Mapped[list["Venta"]] = relationship(back_populates="turno")
     gastos: Mapped[list["Gasto"]] = relationship(back_populates="turno")
+    usuario: Mapped["Usuario"] = relationship()
 
 
 class Gasto(Base, TimestampMixin):

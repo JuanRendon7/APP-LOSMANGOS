@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { ESTILO_TONO } from '@/shared/ui/estado'
 import { actualizarMesa, listarMesas } from './api'
 import { MesaFormModal } from './MesaFormModal'
 import { PedidoPanel } from './PedidoPanel'
@@ -18,41 +19,16 @@ type EstadoVisual = 'LIBRE' | 'TOMANDO_PEDIDO' | 'EN_COCINA' | 'LISTO' | 'SERVID
 interface VisualConfig {
   label: string
   icon: LucideIcon
-  marcador: string
+  anillo: string
   badge: string
 }
 
 const CONFIG_VISUAL: Record<EstadoVisual, VisualConfig> = {
-  LIBRE: {
-    label: 'Libre',
-    icon: CircleCheck,
-    marcador: 'border-emerald-300 bg-emerald-50 text-emerald-800',
-    badge: 'bg-emerald-100 text-emerald-800',
-  },
-  TOMANDO_PEDIDO: {
-    label: 'Tomando pedido',
-    icon: NotebookPen,
-    marcador: 'border-slate-300 bg-slate-100 text-slate-800',
-    badge: 'bg-slate-200 text-slate-800',
-  },
-  EN_COCINA: {
-    label: 'En cocina',
-    icon: ChefHat,
-    marcador: 'border-blue-400 bg-blue-500 text-white',
-    badge: 'bg-blue-100 text-blue-800',
-  },
-  LISTO: {
-    label: 'Listo para servir',
-    icon: Bell,
-    marcador: 'border-amber-400 bg-amber-400 text-amber-950 animate-pulse',
-    badge: 'bg-amber-100 text-amber-800',
-  },
-  SERVIDO: {
-    label: 'Servido · por cobrar',
-    icon: Receipt,
-    marcador: 'border-primary bg-primary text-primary-foreground',
-    badge: 'bg-marca-200 text-marca-800',
-  },
+  LIBRE: { label: 'Libre', icon: CircleCheck, ...ESTILO_TONO.exito },
+  TOMANDO_PEDIDO: { label: 'Tomando pedido', icon: NotebookPen, ...ESTILO_TONO.neutral },
+  EN_COCINA: { label: 'En cocina', icon: ChefHat, ...ESTILO_TONO.info },
+  LISTO: { label: 'Listo para servir', icon: Bell, ...ESTILO_TONO.alerta },
+  SERVIDO: { label: 'Servido · por cobrar', icon: Receipt, ...ESTILO_TONO.exito },
 }
 
 const ORDEN_VISUAL: EstadoVisual[] = ['LIBRE', 'TOMANDO_PEDIDO', 'EN_COCINA', 'LISTO', 'SERVIDO']
@@ -79,6 +55,100 @@ const formatoMoneda = new Intl.NumberFormat('es-CO', {
 
 function minutosDesde(iso: string): number {
   return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
+}
+
+const TAMANO_MESA = 128
+const RADIO_TABLERO = 46
+const RADIO_SILLAS = 68
+const TAMANO_SILLA = 22
+
+function posicionesSillas(cantidad: number): { x: number; y: number }[] {
+  return Array.from({ length: cantidad }, (_, i) => {
+    const angulo = (2 * Math.PI * i) / cantidad - Math.PI / 2
+    return { x: Math.cos(angulo) * RADIO_SILLAS, y: Math.sin(angulo) * RADIO_SILLAS }
+  })
+}
+
+function MesaIlustrada({
+  mesa,
+  cfg,
+  seleccionada,
+  modoEdicion,
+}: {
+  mesa: Mesa
+  cfg: VisualConfig
+  seleccionada: boolean
+  modoEdicion: boolean
+}) {
+  const Icono = cfg.icon
+  const listo = estadoVisual(mesa) === 'LISTO'
+  const sillas = posicionesSillas(Math.min(Math.max(mesa.capacidad, 2), 8))
+
+  return (
+    <div
+      className="relative"
+      style={{ width: TAMANO_MESA, height: TAMANO_MESA }}
+    >
+      {sillas.map((silla, indice) => (
+        <div
+          key={indice}
+          className="absolute rounded-md border border-marca-400 bg-marca-300 shadow-sm"
+          style={{
+            width: TAMANO_SILLA,
+            height: TAMANO_SILLA,
+            left: TAMANO_MESA / 2 + silla.x - TAMANO_SILLA / 2,
+            top: TAMANO_MESA / 2 + silla.y - TAMANO_SILLA / 2,
+          }}
+        />
+      ))}
+
+      <div
+        className={`absolute rounded-full border-2 shadow-lg transition-shadow ${
+          listo ? 'animate-pulse' : ''
+        } ${seleccionada ? 'ring-4 ring-ring ring-offset-2 ring-offset-background' : ''}`}
+        style={{
+          width: RADIO_TABLERO * 2,
+          height: RADIO_TABLERO * 2,
+          left: TAMANO_MESA / 2 - RADIO_TABLERO,
+          top: TAMANO_MESA / 2 - RADIO_TABLERO,
+          borderColor: cfg.anillo,
+          background:
+            'radial-gradient(circle at 32% 28%, var(--color-marca-100), var(--color-marca-300) 55%, var(--color-marca-500) 100%)',
+        }}
+      >
+        <div className="flex h-full w-full flex-col items-center justify-center px-2 text-center">
+          <span className="font-serif text-sm font-semibold leading-tight text-marca-900">
+            {mesa.nombre}
+          </span>
+          <span className="text-[10px] leading-tight text-marca-700">{mesa.capacidad} pax</span>
+          {mesa.pedido_activo && (
+            <span className="mt-0.5 text-[9px] font-medium leading-tight text-marca-800">
+              {formatoMoneda.format(mesa.pedido_activo.total)}
+              <br />
+              {minutosDesde(mesa.pedido_activo.creado_en)}m
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div
+        className={`absolute flex items-center justify-center rounded-full border-2 border-background shadow ${cfg.badge}`}
+        style={{
+          width: 26,
+          height: 26,
+          left: TAMANO_MESA / 2 + RADIO_TABLERO - 10,
+          top: TAMANO_MESA / 2 - RADIO_TABLERO - 10,
+        }}
+        title={cfg.label}
+      >
+        <Icono size={13} />
+      </div>
+
+      {modoEdicion && (
+        <div className="pointer-events-none absolute inset-0 rounded-full border-2 border-dashed border-oro-500/60" />
+      )}
+    </div>
+  )
 }
 
 export function MapaMesasPage() {
@@ -236,8 +306,8 @@ export function MapaMesasPage() {
       )}
 
       {!modoEdicion && listasParaServir.length > 0 && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
-          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-800">
+        <div className="rounded-lg border border-alerta-300 bg-alerta-50 p-3">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-alerta-800">
             <Bell size={14} /> Listas para servir
           </div>
           <ul className="flex flex-wrap gap-2">
@@ -245,11 +315,11 @@ export function MapaMesasPage() {
               <li key={mesa.id_mesa}>
                 <button
                   onClick={() => setIdSeleccionada(mesa.id_mesa)}
-                  className="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-sm font-medium text-amber-900 hover:bg-amber-100"
+                  className="rounded-md border border-alerta-300 bg-white px-2.5 py-1 text-sm font-medium text-alerta-900 hover:bg-alerta-100"
                 >
                   {mesa.nombre}
                   {mesa.pedido_activo && (
-                    <span className="ml-1 font-normal text-amber-700">
+                    <span className="ml-1 font-normal text-alerta-700">
                       · {minutosDesde(mesa.pedido_activo.creado_en)}m
                     </span>
                   )}
@@ -262,7 +332,11 @@ export function MapaMesasPage() {
 
       <div
         ref={canvasRef}
-        className="relative h-[420px] w-full touch-none rounded-xl border-2 border-dashed border-border bg-card/60"
+        className="relative h-[560px] w-full touch-none overflow-hidden rounded-2xl border border-border shadow-inner"
+        style={{
+          background:
+            'radial-gradient(ellipse at center, var(--color-marca-50), var(--color-marca-100) 100%)',
+        }}
       >
         {mesas.map((mesa) => {
           const visual = estadoVisual(mesa)
@@ -271,11 +345,16 @@ export function MapaMesasPage() {
             <button
               key={mesa.id_mesa}
               type="button"
-              style={{ left: `${mesa.pos_x}%`, top: `${mesa.pos_y}%` }}
-              className={`absolute flex h-20 w-24 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-0.5 rounded-xl border text-xs font-medium shadow-sm transition-all ${
-                cfg.marcador
-              } ${modoEdicion ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer hover:shadow-md'} ${
-                idSeleccionada === mesa.id_mesa ? 'ring-2 ring-ring ring-offset-2 ring-offset-background' : ''
+              style={{
+                left: `${mesa.pos_x}%`,
+                top: `${mesa.pos_y}%`,
+                width: TAMANO_MESA,
+                height: TAMANO_MESA,
+              }}
+              className={`absolute -translate-x-1/2 -translate-y-1/2 transition-transform ${
+                modoEdicion
+                  ? 'cursor-grab active:cursor-grabbing active:scale-105'
+                  : 'cursor-pointer hover:scale-105'
               }`}
               onPointerDown={(e) => {
                 if (!modoEdicion) return
@@ -294,13 +373,12 @@ export function MapaMesasPage() {
                 setIdSeleccionada(mesa.id_mesa)
               }}
             >
-              <span className="font-semibold">{mesa.nombre}</span>
-              <span className="opacity-80">{mesa.capacidad} pax</span>
-              {mesa.pedido_activo && (
-                <span className="opacity-90">
-                  {formatoMoneda.format(mesa.pedido_activo.total)} · {minutosDesde(mesa.pedido_activo.creado_en)}m
-                </span>
-              )}
+              <MesaIlustrada
+                mesa={mesa}
+                cfg={cfg}
+                seleccionada={idSeleccionada === mesa.id_mesa}
+                modoEdicion={modoEdicion}
+              />
             </button>
           )
         })}

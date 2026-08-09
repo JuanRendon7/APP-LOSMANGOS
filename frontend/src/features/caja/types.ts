@@ -6,6 +6,7 @@ export type OrigenVentaMostrador = 'BAR' | 'RESTAURANTE'
 export interface TurnoCaja {
   id_turno: number
   id_usuario: number
+  nombre_usuario: string
   estado: EstadoTurno
   monto_apertura: number
   monto_cierre_real: number | null

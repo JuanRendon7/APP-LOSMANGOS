@@ -1,6 +1,8 @@
 import {
   BedDouble,
   Beer,
+  Bell,
+  ChevronRight,
   ClipboardList,
   LayoutGrid,
   LogOut,
@@ -13,10 +15,11 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
-import { type ReactNode, useState } from 'react'
+import { type ReactNode, useEffect, useState } from 'react'
 import { NavLink, useLocation } from 'react-router'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { cn } from '@/shared/lib/utils'
+import { NotificationBell } from '@/shared/notifications/NotificationBell'
 import { MangoIcon } from '@/shared/ui/MangoIcon'
 import { BrandBackdrop } from './BrandBackdrop'
 
@@ -27,9 +30,15 @@ interface Enlace {
   icon: LucideIcon
 }
 
+interface Subgrupo {
+  titulo: string
+  enlaces: Enlace[]
+}
+
 interface Grupo {
   titulo: string
   enlaces: Enlace[]
+  subgrupo?: Subgrupo
 }
 
 const GRUPOS: Grupo[] = [
@@ -43,26 +52,29 @@ const GRUPOS: Grupo[] = [
     ],
   },
   {
-    titulo: 'Maestros',
-    enlaces: [
-      {
-        to: '/productos/restaurante',
-        label: 'Restaurante',
-        recurso: 'PRODUCTOS_RESTAURANTE',
-        icon: UtensilsCrossed,
-      },
-      { to: '/productos/bar', label: 'Bar', recurso: 'PRODUCTOS_BAR', icon: Beer },
-      { to: '/tarifario', label: 'Tarifario', recurso: 'TARIFAS', icon: Tag },
-    ],
-  },
-  {
     titulo: 'Administración',
     enlaces: [
       { to: '/reportes', label: 'Reportes', recurso: 'REPORTES', icon: ClipboardList },
       { to: '/usuarios', label: 'Usuarios', recurso: 'USUARIOS', icon: Users },
     ],
+    subgrupo: {
+      titulo: 'Maestros',
+      enlaces: [
+        {
+          to: '/productos/restaurante',
+          label: 'Restaurante',
+          recurso: 'PRODUCTOS_RESTAURANTE',
+          icon: UtensilsCrossed,
+        },
+        { to: '/productos/bar', label: 'Bar', recurso: 'PRODUCTOS_BAR', icon: Beer },
+        { to: '/tarifario', label: 'Tarifario', recurso: 'TARIFAS', icon: Tag },
+        { to: '/configuracion', label: 'Notificaciones', recurso: 'CONFIGURACION', icon: Bell },
+      ],
+    },
   },
 ]
+
+const RUTAS_MAESTROS = GRUPOS.flatMap((grupo) => grupo.subgrupo?.enlaces.map((e) => e.to) ?? [])
 
 const TITULOS_PAGINA: Record<string, string> = {
   '/': 'Vender',
@@ -74,6 +86,39 @@ const TITULOS_PAGINA: Record<string, string> = {
   '/tarifario': 'Tarifario',
   '/caja': 'Caja',
   '/usuarios': 'Usuarios',
+  '/configuracion': 'Notificaciones',
+}
+
+function ItemEnlace({
+  enlace,
+  colapsado,
+  onClick,
+}: {
+  enlace: Enlace
+  colapsado: boolean
+  onClick: () => void
+}) {
+  const Icono = enlace.icon
+  return (
+    <li>
+      <NavLink
+        to={enlace.to}
+        end={enlace.to === '/'}
+        onClick={onClick}
+        title={colapsado ? enlace.label : undefined}
+        className={({ isActive }) =>
+          cn(
+            'flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
+            isActive ? 'bg-mango-700 text-mango-50' : 'text-marca-700 hover:bg-marca-200/70',
+            colapsado && 'justify-center px-0',
+          )
+        }
+      >
+        <Icono size={18} className="shrink-0" />
+        {!colapsado && <span className="truncate">{enlace.label}</span>}
+      </NavLink>
+    </li>
+  )
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -81,6 +126,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const location = useLocation()
   const [colapsado, setColapsado] = useState(false)
   const [abiertoMovil, setAbiertoMovil] = useState(false)
+  const [maestrosAbierto, setMaestrosAbierto] = useState(() =>
+    RUTAS_MAESTROS.includes(location.pathname),
+  )
+
+  useEffect(() => {
+    if (RUTAS_MAESTROS.includes(location.pathname)) {
+      setMaestrosAbierto(true)
+    }
+  }, [location.pathname])
 
   const inicial =
     usuario?.nombre
@@ -130,7 +184,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               const visibles = grupo.enlaces.filter(
                 (enlace) => !enlace.recurso || tienePermiso(enlace.recurso, 'VER'),
               )
-              if (visibles.length === 0) return null
+              const visiblesSubgrupo =
+                grupo.subgrupo?.enlaces.filter(
+                  (enlace) => !enlace.recurso || tienePermiso(enlace.recurso, 'VER'),
+                ) ?? []
+              if (visibles.length === 0 && visiblesSubgrupo.length === 0) return null
               return (
                 <div key={grupo.titulo}>
                   {!colapsado && (
@@ -139,32 +197,57 @@ export function AppShell({ children }: { children: ReactNode }) {
                     </p>
                   )}
                   <ul className="space-y-0.5">
-                    {visibles.map((enlace) => {
-                      const Icono = enlace.icon
-                      return (
-                        <li key={enlace.to}>
-                          <NavLink
-                            to={enlace.to}
-                            end={enlace.to === '/'}
-                            onClick={() => setAbiertoMovil(false)}
-                            title={colapsado ? enlace.label : undefined}
-                            className={({ isActive }) =>
-                              cn(
-                                'flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors',
-                                isActive
-                                  ? 'bg-mango-700 text-mango-50'
-                                  : 'text-marca-700 hover:bg-marca-200/70',
-                                colapsado && 'justify-center px-0',
-                              )
-                            }
-                          >
-                            <Icono size={18} className="shrink-0" />
-                            {!colapsado && <span className="truncate">{enlace.label}</span>}
-                          </NavLink>
-                        </li>
-                      )
-                    })}
+                    {visibles.map((enlace) => (
+                      <ItemEnlace
+                        key={enlace.to}
+                        enlace={enlace}
+                        colapsado={colapsado}
+                        onClick={() => setAbiertoMovil(false)}
+                      />
+                    ))}
                   </ul>
+                  {visiblesSubgrupo.length > 0 &&
+                    (colapsado ? (
+                      <ul className="space-y-0.5">
+                        {visiblesSubgrupo.map((enlace) => (
+                          <ItemEnlace
+                            key={enlace.to}
+                            enlace={enlace}
+                            colapsado={colapsado}
+                            onClick={() => setAbiertoMovil(false)}
+                          />
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="mt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setMaestrosAbierto((v) => !v)}
+                          className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-sm font-medium text-marca-700 hover:bg-marca-200/70"
+                        >
+                          <ChevronRight
+                            size={14}
+                            className={cn(
+                              'shrink-0 transition-transform',
+                              maestrosAbierto && 'rotate-90',
+                            )}
+                          />
+                          <span className="truncate">{grupo.subgrupo?.titulo}</span>
+                        </button>
+                        {maestrosAbierto && (
+                          <ul className="mt-0.5 ml-4 space-y-0.5 border-l border-border pl-3.5">
+                            {visiblesSubgrupo.map((enlace) => (
+                              <ItemEnlace
+                                key={enlace.to}
+                                enlace={enlace}
+                                colapsado={colapsado}
+                                onClick={() => setAbiertoMovil(false)}
+                              />
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
                 </div>
               )
             })}
@@ -227,6 +310,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="font-serif text-lg font-semibold tracking-tight text-foreground">
             {TITULOS_PAGINA[location.pathname] ?? 'Hotel Los Mangos'}
           </p>
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </header>
         <main className="flex-1 p-4 lg:p-6">{children}</main>
       </div>

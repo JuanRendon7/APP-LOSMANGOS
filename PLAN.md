@@ -2,7 +2,9 @@
 
 Última actualización: 2026-08-08 (Fase 8: reportería por área de negocio, notificaciones
 con sonido, corrección de caja compartida, rediseño ilustrado de habitaciones/mesas,
-colores de estado unificados y reordenamiento del sidebar).
+colores de estado unificados, reordenamiento del sidebar, catálogo de habitaciones,
+búsqueda global, edición de mesas, umbral de stock configurable y correcciones de
+notificaciones/escáner de código de barras).
 
 ## Qué es esto
 
@@ -213,14 +215,29 @@ dependencies.py # get_xxx_service(db=Depends(get_db))
    `referencia_externa` preparados para distinguir reservas directas de las
    sincronizadas, pero `referencia_externa` no tiene constraint de unicidad todavía
    (hace falta para no importar la misma reserva de Booking dos veces). Recurso ya
-   sembrado: `BOOKING_SYNC` (solo admin). **Bloqueada** (2026-08-08) hasta que el
-   usuario confirme cómo está publicado el hotel en Booking.com: si cada habitación
-   (102...210) es su propio listado/calendario, o si Booking agrupa varias
-   habitaciones físicas en pocos "tipos de habitación" — esto cambia por completo
-   cómo mapear las reservas que lleguen de allá a una `Habitacion` concreta. También
-   falta decidir si el alcance es solo importar reservas de Booking, solo exportar las
-   propias, o ambas direcciones (el usuario ya pidió ambas direcciones cuando se
-   retome).
+   sembrado: `BOOKING_SYNC` (solo admin). Alcance ya definido: **ambas direcciones**
+   (importar reservas de Booking y exportar las propias).
+
+   **Mapeo confirmado (2026-08-08)**: Booking.com no publica el hotel habitación por
+   habitación — agrupa en 3 "tipos de habitación" (concepto que hoy NO existe en el
+   modelo de datos; `Habitacion` no tiene campo de tipo/categoría, a propósito, porque
+   la Fase 3 decidió que el precio varía solo por temporada, no por tipo — ese
+   concepto habría que agregarlo, solo para este mapeo, sin tocar el precio):
+   - **Sencilla**: habitaciones 102-108 (piso 1, 7 habitaciones).
+   - **Dos camas**: habitaciones 201 y 210 (2 habitaciones).
+   - **Pareja / 1 cama**: habitaciones 202-209 (8 habitaciones).
+
+   **Sigue bloqueada** hasta que el usuario revise un detalle en el Extranet de
+   Booking (Tarifas y disponibilidad → Sincronizar calendarios): si Booking da **un
+   calendario iCal por unidad** dentro de cada tipo (ej. "Sencilla — Unidad 1",
+   "Unidad 2", ...) o **un solo calendario por tipo agrupado**. Con calendario por
+   unidad, cada unidad de Booking se mapea 1:1 a una `Habitacion` física concreta, sin
+   ambigüedad. Sin eso (un solo calendario por tipo), el sistema tendría que decidir
+   por su cuenta a qué habitación física asignar cada reserva entrante de un tipo con
+   varias habitaciones — con riesgo real de sobreventa si no se diseña con cuidado
+   (iCal básico solo puede marcar fechas como "ocupado/libre" para un calendario, no
+   representa "quedan 3 de 7 libres"). No adivinar esto: confirmarlo antes de diseñar
+   el módulo.
 
 ## Rediseño visual (2026-08-07): sidebar + marca
 
@@ -472,6 +489,109 @@ Detalles:
   subsección colapsable dentro de `Administración` (junto a Reportes y Usuarios),
   colapsada por defecto pero que se auto-expande si la ruta activa es una de las
   suyas. El sidebar bajó de 3 grupos a 2 (`Operación`, `Administración`).
+- **Colores de estado de habitaciones ajustados (2026-08-08)**: a pedido del usuario,
+  el semáforo de `ESTADO_CONFIG` en `HabitacionesPage.tsx` cambió de
+  DISPONIBLE=exito/OCUPADA=info/LIMPIEZA=alerta/MANTENIMIENTO=peligro a
+  DISPONIBLE=**exito** (verde), OCUPADA=**peligro** (rojo), LIMPIEZA=**amarillo**
+  (nuevo), MANTENIMIENTO=**alerta** (naranja) — el semáforo clásico verde/rojo que
+  el usuario esperaba. Requirió una quinta escala en `index.css`
+  (`--color-amarillo-*`, hue ~85-95) porque antes solo había 4 tonos y hacían falta
+  dos distintos para limpieza vs. mantenimiento; corrida lejos de `oro` por el mismo
+  motivo que `alerta`.
+- **Tipo de habitación como campo real + catálogo en Maestros (2026-08-08)**: al dar
+  el desglose de Booking.com (Sencilla: 102-108, Dos camas: 201/210, Pareja: 202-209),
+  se había mostrado el tipo en las tarjetas de Habitaciones calculándolo en el
+  frontend a partir del número (`tipoHabitacion()`, un hack de una sola sesión). El
+  usuario preguntó si podía editar la info de habitaciones desde Maestros — no se
+  podía (`Habitacion` solo tenía PATCH de `estado`, sin crear/editar número, piso o
+  tipo) — y pidió que se resolviera de una vez, en parte porque un `tipo` real
+  también deja mejor preparado el mapeo de Booking.com de la Fase 9. Se agregó
+  `tipo: str` (NOT NULL) a `Habitacion` (migración `993a29c8d2d4`, backfill de las 17
+  filas existentes con la misma regla que el hack del frontend, que ya se eliminó).
+  Nuevos endpoints: `POST /habitaciones` y `PATCH /habitaciones/{id}/info`
+  (numero/piso/tipo), separados del `PATCH /habitaciones/{id}` existente (que sigue
+  siendo solo para el `estado` operativo). Permisos separados a propósito: `EDITAR`
+  (cambiar estado) sigue siendo de empleado, pero se agregó una acción nueva
+  `EDITAR_CATALOGO` (crear/editar número-piso-tipo) que **no** se le dio a
+  `EMPLEADO_PERMISOS` — administrar el inventario de habitaciones es admin-only,
+  igual que Tarifario y Productos, aunque cambiar el estado del día a día siga
+  siendo del empleado. De paso se le quitó `CREAR` a `EMPLEADO_PERMISOS.HABITACIONES`
+  (estaba desde el Andamiaje sin usarse nunca, ya que no existía endpoint de
+  creación hasta ahora). Frontend nuevo en Maestros → Habitaciones
+  (`HabitacionesCatalogoPage.tsx` + `HabitacionFormModal.tsx`, mismo patrón de tabla +
+  modal que `TarifarioPage`/`TemporadaFormModal`), con un `<datalist>` de los tipos
+  ya usados para evitar duplicados por typo (ej. "Sencilla" vs "sencilla") sin
+  convertir `tipo` en un enum cerrado — el usuario quiere poder "parametrizarlo de
+  otra forma" más adelante. 6 tests nuevos.
+  **Gotcha real encontrado en el camino**: `seed.py` es puramente aditivo — al
+  quitarle `CREAR` a `EMPLEADO_PERMISOS.HABITACIONES` en el código, la fila
+  `rol_permiso` ya sembrada en la base de datos de desarrollo **no se borró sola**
+  (`asegurar_rol_permiso` solo agrega, nunca revoca). Tocó borrarla a mano con SQL
+  directo. Si una fase futura le quita una acción a `EMPLEADO_PERMISOS`, hay que
+  revocarla a mano en cualquier base de datos ya sembrada (dev, y eventualmente
+  producción) — el seed no lo hace por su cuenta.
+- **Semáforo de habitaciones: verde/rojo/amarillo/naranja (2026-08-08)**: a pedido
+  del usuario, se corrigió el mapeo de tonos en `HabitacionesPage.tsx`:
+  DISPONIBLE=**exito** (verde, sin cambio), OCUPADA=**peligro** (rojo, antes era
+  `info`/azul), LIMPIEZA=**amarillo** (tono nuevo, antes usaba `alerta`/naranja),
+  MANTENIMIENTO=**alerta** (naranja, antes usaba `peligro`/rojo). Como solo había 4
+  tonos de estado y hacían falta 4 colores distintos y sin repetir entre limpieza y
+  mantenimiento, se agregó una quinta escala `--color-amarillo-*` en `index.css`
+  (hue ~85-95), corrida lejos de `oro` por el mismo motivo que `alerta`.
+- **Búsqueda global (2026-08-08)**: `frontend/src/shared/search/GlobalSearch.tsx`
+  (nuevo), en el header junto a la campana. Busca en habitaciones (número/tipo),
+  mesas (nombre), productos de bar/restaurante (nombre/código de barras) y
+  huéspedes (nombre/cédula), respetando permisos. Habitaciones/mesas/productos se
+  cargan una sola vez al abrir la búsqueda y se filtran en memoria (igual que
+  `BuscadorProducto` en Vender); huéspedes usa el endpoint de búsqueda del backend
+  con debounce (igual que el autocompletar de `ReservaFormModal`). Al hacer clic en
+  un resultado se abre un modal de detalle (no navega directo) con toda la
+  información disponible — habitación: tipo/piso/estado/huésped actual/próximas
+  reservas (esto último con una consulta nueva); mesa: capacidad/estado/pedido
+  activo; producto: precio/stock/activo; huésped: cédula/contacto/placa y si está
+  hospedado ahora mismo (cruzando contra las habitaciones ya cargadas) — cada
+  modal tiene un botón para ir a la sección completa. Sin paquete backend nuevo,
+  reutiliza endpoints existentes.
+  **Bug encontrado y corregido de paso**: navegar con `?id=`/`?q=` desde la
+  búsqueda no hacía nada si ya se estaba parado en esa misma página (Habitaciones o
+  Mesas) — React Router no vuelve a montar el componente solo porque cambia un
+  query param en la misma ruta, y el `useState` inicial que leía la URL solo corría
+  una vez. Se agregó un `useEffect` en ambas páginas que sincroniza la selección
+  cuando cambian los `searchParams`, no solo al montar.
+- **Editar mesas existentes (2026-08-08)**: antes `MesaFormModal.tsx` solo creaba
+  mesas nuevas; para editar nombre/capacidad de una ya creada no había desde
+  dónde. Se extendió el modal para aceptar una mesa existente (mismo patrón que
+  `HabitacionFormModal`/`TemporadaFormModal`). En `MapaMesasPage.tsx`, dentro de
+  "Editar mapa", un clic corto sobre una mesa (sin arrastrarla) abre el formulario
+  de edición; arrastrarla sigue moviendo su posición — se distinguen con un ref
+  que marca si hubo movimiento entre `pointerdown` y `pointerup`.
+- **Umbral de stock bajo configurable por producto (2026-08-08)**: antes un `5`
+  fijo estaba repetido en cuatro archivos del frontend (Vender, catálogo de Bar,
+  Reportes de Bar, notificaciones). Se agregó `umbral_stock_bajo: int` a
+  `ProductoBar` (default 5, migración `3cbe1ca7c9ec`), editable en
+  `ProductoBarFormModal.tsx` ("Avisar cuando el stock llegue a"). Los cuatro
+  lugares ahora leen `producto.umbral_stock_bajo` en vez de una constante. 2 tests
+  nuevos.
+- **Correcciones de notificaciones y escáner de código de barras (2026-08-08)**,
+  a partir de reportes del usuario:
+  - *Sonido sin notificación visible*: `useNotificaciones.ts` comparaba ids contra
+    el sondeo anterior para decidir si algo era "nuevo" y hacía sonar la campana,
+    pero (a) si un sondeo fallaba a medias (ej. por un reinicio del backend al
+    aplicar una migración) el resultado parcial/vacío se guardaba como base de
+    comparación, haciendo que TODO pareciera "nuevo" en el siguiente sondeo exitoso
+    y sonara sin que nada hubiera cambiado; y (b) una alerta ya descartada por el
+    usuario podía sonar de nuevo si su id desaparecía y reaparecía entre sondeos
+    (ej. stock que sube y baja), aunque siguiera invisible por estar descartada.
+    Se corrigieron ambos: un sondeo fallido no actualiza la base de comparación, y
+    una alerta dentro de su ventana de descarte no cuenta como "nueva" para sonar.
+  - *Lector de código de barras dependía del foco*: `VenderPage.tsx` solo
+    reconocía un escaneo si el campo dedicado tenía el foco (se enfocaba una sola
+    vez al entrar a la pantalla). Se agregó un listener global de teclado en
+    `VentaMostrador` que detecta ráfagas de tecleo muy rápidas terminadas en
+    Enter (típico de un lector físico, a diferencia de tecleo humano) sin importar
+    qué elemento tenga el foco, con guarda para no duplicar el procesamiento
+    cuando el campo dedicado sí está enfocado (ese caso lo sigue manejando su
+    propio `onKeyDown`, sin cambios).
 
 ## Decisiones y convenciones a mantener
 
@@ -510,18 +630,18 @@ Detalles:
 
 ## Pendiente de decidir con el usuario (aún no se ha preguntado)
 
-- Fase 9 (Booking.com), **bloqueada** hasta que el usuario responda: (a) si cada
-  habitación tiene su propio listado/calendario en Booking o si Booking agrupa varias
-  habitaciones en pocos "tipos de habitación"; el alcance (importar/exportar/ambas) ya
-  se definió como **ambas direcciones** cuando se retome.
+- Fase 9 (Booking.com), **bloqueada**: falta que el usuario revise en el Extranet de
+  Booking si el calendario iCal se sincroniza por unidad física (una por habitación)
+  o por tipo agrupado (Sencilla/Dos camas/Pareja) sin distinguir unidad — ver el
+  detalle completo en la Fase 9 más arriba.
 
 ## Estado de git al cerrar esta sesión (2026-08-08)
 
-Todo pusheado a `origin/main`, working tree limpio. Fases 0-7.5 en los commits previos
-(`39decf7`, `d326aa5`, `cfb4bff`, `a05e3dc`, `cf6942d`) y todo el trabajo de esta
-sesión — Fase 8 (reportería por área), notificaciones con sonido y su configuración
-(`src/configuracion/`, paquete nuevo), corrección de caja compartida + fix de huso
-horario, autocompletar huésped por nombre, rediseño ilustrado de habitaciones/mesas,
-colores de estado unificados (`shared/ui/estado.ts`, nuevo) y el sidebar con Maestros
-anidado — en `ea57ad9`. `git log`/`git status` lo confirman rápido si hace falta
-verificar en la próxima sesión.
+Todo pusheado a `origin/main`, working tree limpio. Fases 0-7.5 en commits previos
+(`39decf7`, `d326aa5`, `cfb4bff`, `a05e3dc`, `cf6942d`); el resto de esta sesión —
+Fase 8, notificaciones con sonido, caja compartida, rediseño ilustrado, colores de
+estado, sidebar con Maestros (`ea57ad9`, `df2871c`), y luego catálogo de habitaciones
+con tipo real, semáforo verde/rojo/amarillo/naranja, búsqueda global, edición de
+mesas, umbral de stock configurable, y las correcciones de notificaciones/escáner de
+código de barras, en el commit siguiente. `git log`/`git status` lo confirman rápido
+si hace falta verificar en la próxima sesión.

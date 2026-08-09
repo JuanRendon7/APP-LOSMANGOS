@@ -2,7 +2,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { crearMesa } from './api'
+import { actualizarMesa, crearMesa } from './api'
+import type { Mesa } from './types'
 
 const mesaSchema = z.object({
   nombre: z.string().min(1, { error: 'El nombre es requerido' }),
@@ -14,11 +15,12 @@ const mesaSchema = z.object({
 type MesaForm = z.infer<typeof mesaSchema>
 
 interface Props {
+  mesaExistente: Mesa | null
   onCerrar: () => void
-  onCreada: () => void
+  onGuardada: () => void
 }
 
-export function MesaFormModal({ onCerrar, onCreada }: Props) {
+export function MesaFormModal({ mesaExistente, onCerrar, onGuardada }: Props) {
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null)
 
   const {
@@ -27,16 +29,25 @@ export function MesaFormModal({ onCerrar, onCreada }: Props) {
     formState: { errors, isSubmitting },
   } = useForm<MesaForm>({
     resolver: zodResolver(mesaSchema),
-    defaultValues: { nombre: '', capacidad: 4 },
+    defaultValues: {
+      nombre: mesaExistente?.nombre ?? '',
+      capacidad: mesaExistente?.capacidad ?? 4,
+    },
   })
 
   const onSubmit = async (datos: MesaForm) => {
     setErrorGeneral(null)
     try {
-      await crearMesa(datos)
-      onCreada()
+      if (mesaExistente) {
+        await actualizarMesa(mesaExistente.id_mesa, datos)
+      } else {
+        await crearMesa(datos)
+      }
+      onGuardada()
     } catch {
-      setErrorGeneral('No se pudo crear la mesa.')
+      setErrorGeneral(
+        mesaExistente ? 'No se pudo editar la mesa.' : 'No se pudo crear la mesa.',
+      )
     }
   }
 
@@ -44,7 +55,9 @@ export function MesaFormModal({ onCerrar, onCreada }: Props) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-serif text-lg font-semibold text-card-foreground">Nueva mesa</h3>
+          <h3 className="font-serif text-lg font-semibold text-card-foreground">
+            {mesaExistente ? 'Editar mesa' : 'Nueva mesa'}
+          </h3>
           <button onClick={onCerrar} className="text-xs text-muted-foreground hover:underline">
             Cerrar
           </button>
@@ -102,9 +115,11 @@ export function MesaFormModal({ onCerrar, onCreada }: Props) {
             )}
           </div>
 
-          <p className="text-xs text-muted-foreground">
-            La mesa se crea en el centro del mapa — arrastrala a su sitio despues.
-          </p>
+          {!mesaExistente && (
+            <p className="text-xs text-muted-foreground">
+              La mesa se crea en el centro del mapa — arrastrala a su sitio despues.
+            </p>
+          )}
 
           {errorGeneral && <p className="text-sm text-destructive">{errorGeneral}</p>}
 
@@ -113,7 +128,7 @@ export function MesaFormModal({ onCerrar, onCreada }: Props) {
             disabled={isSubmitting}
             className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {isSubmitting ? 'Creando...' : 'Crear mesa'}
+            {isSubmitting ? 'Guardando...' : mesaExistente ? 'Guardar cambios' : 'Crear mesa'}
           </button>
         </form>
       </div>

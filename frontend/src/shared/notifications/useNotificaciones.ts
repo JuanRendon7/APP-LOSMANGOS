@@ -7,7 +7,6 @@ import { useAuth } from '@/shared/auth/AuthContext'
 import { reproducirSonido } from './sonidos'
 import type { Notificacion } from './types'
 
-const UMBRAL_STOCK_BAJO = 5
 const UMBRAL_HORAS_TURNO_ABIERTO = 12
 const CLAVE_DESCARTADAS = 'notificaciones_descartadas'
 const CLAVE_LEIDAS = 'notificaciones_leidas'
@@ -50,6 +49,7 @@ export function useNotificaciones() {
   const [leidas, setLeidas] = useState<Record<string, number>>(() => leerMapa(CLAVE_LEIDAS))
   const sonidoRef = useRef('campana')
   const idsAnterioresRef = useRef<Set<string> | null>(null)
+  const descartadasRef = useRef<Record<string, number>>({})
 
   const veHabitaciones = tienePermiso('HABITACIONES', 'VER')
   const veProductosBar = tienePermiso('PRODUCTOS_BAR', 'VER')
@@ -64,15 +64,20 @@ export function useNotificaciones() {
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    descartadasRef.current = descartadas
+  }, [descartadas])
+
   const cargar = useCallback(async () => {
     const hoy = hoyISO()
     const items: Notificacion[] = []
+    let huboError = false
 
     try {
       if (veProductosBar) {
         const productos = await listarProductosBar()
         for (const p of productos) {
-          if (p.activo && p.stock <= UMBRAL_STOCK_BAJO) {
+          if (p.activo && p.stock <= p.umbral_stock_bajo) {
             items.push({
               id: `stock-${p.id_producto}`,
               nivel: 'warning',
@@ -168,17 +173,31 @@ export function useNotificaciones() {
       }
     } catch {
       // si alguna fuente falla, se muestran las notificaciones que si se pudieron calcular
+      huboError = true
     }
 
     items.sort((a, b) => ORDEN_NIVEL[a.nivel] - ORDEN_NIVEL[b.nivel])
 
-    const idsActuales = new Set(items.map((n) => n.id))
-    const idsAnteriores = idsAnterioresRef.current
-    if (idsAnteriores !== null) {
-      const hayNuevas = items.some((n) => !idsAnteriores.has(n.id))
-      if (hayNuevas) reproducirSonido(sonidoRef.current)
+    // Si un sondeo fallo a medias (ej. el backend se reinicio por una migracion),
+    // "items" queda incompleto o vacio — no lo usamos como base de comparacion,
+    // porque en el siguiente sondeo exitoso TODO parece "nuevo" y suena sin que
+    // nada haya cambiado en realidad. Tampoco cuenta como "nueva" una alerta que
+    // el usuario ya descarto y sigue dentro del TTL, aunque su id haya
+    // desaparecido y reaparecido entre sondeos (ej. stock que sube y baja).
+    if (!huboError) {
+      const idsActuales = new Set(items.map((n) => n.id))
+      const idsAnteriores = idsAnterioresRef.current
+      if (idsAnteriores !== null) {
+        const ahora = Date.now()
+        const yaDescartada = (id: string) => {
+          const descartadaEn = descartadasRef.current[id]
+          return descartadaEn !== undefined && ahora - descartadaEn <= TTL_DESCARTE_MS
+        }
+        const hayNuevas = items.some((n) => !idsAnteriores.has(n.id) && !yaDescartada(n.id))
+        if (hayNuevas) reproducirSonido(sonidoRef.current)
+      }
+      idsAnterioresRef.current = idsActuales
     }
-    idsAnterioresRef.current = idsActuales
 
     setNotificaciones(items)
   }, [veHabitaciones, veProductosBar, veReportes])

@@ -15,8 +15,6 @@ const ETIQUETA_METODO: Record<MetodoPago, string> = {
   TRANSFERENCIA: 'Transferencia',
   QR: 'QR',
 }
-const STOCK_BAJO_UMBRAL = 5
-
 interface Props {
   desde: string
   hasta: string
@@ -78,7 +76,7 @@ export function BarTab({ desde, hasta }: Props) {
     return { itemsBar: items, ingreso: ingresoTotal, unidades: unidadesTotal, topProductos: top }
   }, [ventas])
 
-  const stockBajo = productos.filter((p) => p.activo && p.stock <= STOCK_BAJO_UMBRAL)
+  const stockBajo = productos.filter((p) => p.activo && p.stock <= p.umbral_stock_bajo)
   const valorInventario = productos.reduce((suma, p) => suma + p.stock * (p.precio_costo ?? 0), 0)
 
   const descargar = () => {

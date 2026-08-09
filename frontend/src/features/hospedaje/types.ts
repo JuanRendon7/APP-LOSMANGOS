@@ -27,8 +27,15 @@ export interface Habitacion {
   id_habitacion: number
   numero: string
   piso: number
+  tipo: string
   estado: EstadoHabitacion
   reserva_activa: Reserva | null
+}
+
+export interface HabitacionInput {
+  numero: string
+  piso: number
+  tipo: string
 }
 
 export interface ReservaCreateInput {

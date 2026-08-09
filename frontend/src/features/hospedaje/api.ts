@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/api/client'
-import type { Habitacion, Huesped, Reserva, ReservaCreateInput } from './types'
+import type { Habitacion, HabitacionInput, Huesped, Reserva, ReservaCreateInput } from './types'
 
 export async function listarHabitaciones(): Promise<Habitacion[]> {
   const { data } = await apiClient.get<Habitacion[]>('/habitaciones')
@@ -13,6 +13,22 @@ export async function actualizarEstadoHabitacion(
   const { data } = await apiClient.patch<Habitacion>(`/habitaciones/${idHabitacion}`, {
     estado,
   })
+  return data
+}
+
+export async function crearHabitacion(datos: HabitacionInput): Promise<Habitacion> {
+  const { data } = await apiClient.post<Habitacion>('/habitaciones', datos)
+  return data
+}
+
+export async function actualizarHabitacionInfo(
+  idHabitacion: number,
+  datos: Partial<HabitacionInput>,
+): Promise<Habitacion> {
+  const { data } = await apiClient.patch<Habitacion>(
+    `/habitaciones/${idHabitacion}/info`,
+    datos,
+  )
   return data
 }
 

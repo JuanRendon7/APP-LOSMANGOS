@@ -32,6 +32,7 @@ class ProductoBarBase(BaseModel):
 
 class ProductoBarCreate(ProductoBarBase):
     stock: int = Field(default=0, ge=0)
+    umbral_stock_bajo: int = Field(default=5, ge=0)
 
 
 class ProductoBarUpdate(BaseModel):
@@ -39,6 +40,7 @@ class ProductoBarUpdate(BaseModel):
     codigo_barras: str | None = Field(default=None, min_length=1, max_length=50)
     precio_costo: int | None = Field(default=None, ge=0)
     precio_venta: int | None = Field(default=None, gt=0)
+    umbral_stock_bajo: int | None = Field(default=None, ge=0)
     activo: bool | None = None
 
 
@@ -48,6 +50,7 @@ class ProductoBarResponse(BaseModel):
     codigo_barras: str
     precio_venta: int
     stock: int
+    umbral_stock_bajo: int
     activo: bool
     precio_costo: int | None = None
     margen: int | None = None

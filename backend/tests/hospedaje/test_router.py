@@ -57,6 +57,72 @@ def test_admin_lista_17_habitaciones(client, usuario_admin):
     # No se asume que todas esten DISPONIBLE: la suite corre contra la BD real
     # de desarrollo, que tambien recibe pruebas manuales de UI.
     assert all(h["estado"] in ESTADOS_HABITACION for h in habitaciones)
+    por_numero = {h["numero"]: h["tipo"] for h in habitaciones}
+    assert por_numero["102"] == "Sencilla"
+    assert por_numero["201"] == "Dos camas"
+    assert por_numero["210"] == "Dos camas"
+    assert por_numero["205"] == "Pareja"
+
+
+def test_admin_crea_habitacion(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    resp = client.post(
+        "/habitaciones",
+        headers=headers,
+        json={"numero": "301", "piso": 3, "tipo": "Suite"},
+    )
+    assert resp.status_code == 201, resp.text
+    creada = resp.json()
+    assert creada["numero"] == "301"
+    assert creada["piso"] == 3
+    assert creada["tipo"] == "Suite"
+    assert creada["estado"] == "DISPONIBLE"
+
+
+def test_no_se_puede_crear_habitacion_con_numero_repetido(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    resp = client.post(
+        "/habitaciones",
+        headers=headers,
+        json={"numero": "102", "piso": 1, "tipo": "Sencilla"},
+    )
+    assert resp.status_code == 409
+
+
+def test_empleado_no_puede_crear_habitacion(client, usuario_empleado):
+    headers = auth_headers(token_para(client, usuario_empleado.email))
+    resp = client.post(
+        "/habitaciones",
+        headers=headers,
+        json={"numero": "302", "piso": 3, "tipo": "Suite"},
+    )
+    assert resp.status_code == 403
+
+
+def test_admin_edita_informacion_de_habitacion(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    habitacion = _habitacion_por_numero(client, headers, "108")
+    resp = client.patch(
+        f"/habitaciones/{habitacion['id_habitacion']}/info",
+        headers=headers,
+        json={"tipo": "Sencilla premium"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["tipo"] == "Sencilla premium"
+
+
+def test_empleado_no_puede_editar_catalogo_de_habitacion(
+    client, usuario_admin, usuario_empleado
+):
+    headers_admin = auth_headers(token_para(client, usuario_admin.email))
+    headers_empleado = auth_headers(token_para(client, usuario_empleado.email))
+    habitacion = _habitacion_por_numero(client, headers_admin, "103")
+    resp = client.patch(
+        f"/habitaciones/{habitacion['id_habitacion']}/info",
+        headers=headers_empleado,
+        json={"tipo": "Otro"},
+    )
+    assert resp.status_code == 403
 
 
 def test_habitaciones_sin_token_devuelve_401(client):

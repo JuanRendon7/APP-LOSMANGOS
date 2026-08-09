@@ -17,6 +17,9 @@ const productoSchema = z.object({
   stock: z
     .number({ error: 'Ingresa una cantidad valida' })
     .min(0, { error: 'El stock no puede ser negativo' }),
+  umbral_stock_bajo: z
+    .number({ error: 'Ingresa un umbral valido' })
+    .min(0, { error: 'El umbral no puede ser negativo' }),
   activo: z.boolean(),
 })
 
@@ -87,6 +90,7 @@ export function ProductoBarFormModal({ productoExistente, onCerrar, onGuardado }
       precio_costo: productoExistente?.precio_costo ?? 0,
       precio_venta: productoExistente?.precio_venta ?? 0,
       stock: productoExistente?.stock ?? 0,
+      umbral_stock_bajo: productoExistente?.umbral_stock_bajo ?? 5,
       activo: productoExistente?.activo ?? true,
     },
   })
@@ -224,6 +228,24 @@ export function ProductoBarFormModal({ productoExistente, onCerrar, onGuardado }
               para cambiarlo.
             </p>
           )}
+
+          <Controller
+            name="umbral_stock_bajo"
+            control={control}
+            render={({ field }) => (
+              <CampoNumero
+                id="umbral_stock_bajo"
+                label="Avisar cuando el stock llegue a"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+                inputRef={field.ref}
+                error={errors.umbral_stock_bajo?.message}
+                step={1}
+              />
+            )}
+          />
 
           {esEdicion && (
             <label className="flex items-center gap-2 text-sm text-foreground">

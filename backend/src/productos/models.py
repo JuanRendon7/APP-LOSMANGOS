@@ -22,4 +22,5 @@ class ProductoBar(Base, TimestampMixin):
     precio_costo: Mapped[int] = mapped_column(Integer)
     precio_venta: Mapped[int] = mapped_column(Integer)
     stock: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    umbral_stock_bajo: Mapped[int] = mapped_column(Integer, server_default=text("5"))
     activo: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))

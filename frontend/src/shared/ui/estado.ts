@@ -1,4 +1,4 @@
-export type Tono = 'exito' | 'alerta' | 'peligro' | 'info' | 'neutral'
+export type Tono = 'exito' | 'alerta' | 'peligro' | 'info' | 'amarillo' | 'neutral'
 
 interface EstiloTono {
   marco: string
@@ -50,6 +50,15 @@ export const ESTILO_TONO: Record<Tono, EstiloTono> = {
     punto: 'bg-info-600',
     texto: 'text-info-600',
     anillo: 'var(--color-info-500)',
+  },
+  amarillo: {
+    marco: 'border-amarillo-300',
+    badge: 'bg-amarillo-100 text-amarillo-800',
+    chipActivo: 'border-amarillo-500 bg-amarillo-50 text-amarillo-800',
+    banner: 'border-amarillo-300 bg-amarillo-50 text-amarillo-900',
+    punto: 'bg-amarillo-600',
+    texto: 'text-amarillo-600',
+    anillo: 'var(--color-amarillo-500)',
   },
   neutral: {
     marco: 'border-marca-300',

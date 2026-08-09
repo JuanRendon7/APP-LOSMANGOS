@@ -1,5 +1,6 @@
 import { CircleCheck, CircleSlash, Coins, Search, UtensilsCrossed } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { ESTILO_TONO } from '@/shared/ui/estado'
 import { actualizarProductoRestaurante, listarProductosRestaurante } from './api'
@@ -14,12 +15,13 @@ const formatoMoneda = new Intl.NumberFormat('es-CO', {
 
 export function ProductosRestaurantePage() {
   const { tienePermiso } = useAuth()
+  const [searchParams] = useSearchParams()
   const [productos, setProductos] = useState<ProductoRestaurante[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editando, setEditando] = useState<ProductoRestaurante | null>(null)
   const [mostrarForm, setMostrarForm] = useState(false)
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda, setBusqueda] = useState(() => searchParams.get('q') ?? '')
   const [soloActivos, setSoloActivos] = useState(false)
 
   const puedeGestionar = tienePermiso('PRODUCTOS_RESTAURANTE', 'CREAR')

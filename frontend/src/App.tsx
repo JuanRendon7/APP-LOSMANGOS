@@ -3,6 +3,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { CajaPage } from '@/features/caja/CajaPage'
 import { VenderPage } from '@/features/caja/VenderPage'
 import { ConfiguracionPage } from '@/features/configuracion/ConfiguracionPage'
+import { HabitacionesCatalogoPage } from '@/features/hospedaje/HabitacionesCatalogoPage'
 import { HabitacionesPage } from '@/features/hospedaje/HabitacionesPage'
 import { ProductosBarPage } from '@/features/productos/ProductosBarPage'
 import { ProductosRestaurantePage } from '@/features/productos/ProductosRestaurantePage'
@@ -39,6 +40,18 @@ export default function App() {
               <AppShell>
                 <RequierePermiso recurso="HABITACIONES" accion="VER">
                   <HabitacionesPage />
+                </RequierePermiso>
+              </AppShell>
+            </RequiereSesion>
+          }
+        />
+        <Route
+          path="/habitaciones/catalogo"
+          element={
+            <RequiereSesion>
+              <AppShell>
+                <RequierePermiso recurso="HABITACIONES" accion="VER">
+                  <HabitacionesCatalogoPage />
                 </RequierePermiso>
               </AppShell>
             </RequiereSesion>

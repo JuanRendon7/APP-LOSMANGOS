@@ -21,8 +21,6 @@ import type {
   VentaMostradorItemInput,
 } from './types'
 
-const STOCK_BAJO_UMBRAL = 5
-
 const formatoMoneda = new Intl.NumberFormat('es-CO', {
   style: 'currency',
   currency: 'COP',
@@ -260,6 +258,51 @@ function VentaMostrador({
     inputBarcodeRef.current?.focus()
   }, [])
 
+  // Si el campo del lector ya tiene el foco, manejarEscaneo (onKeyDown de ese
+  // input) se encarga. Este listener global cubre el resto: si el cajero hizo
+  // clic en el selector manual, el metodo de pago, o cualquier otra cosa, un
+  // lector fisico de codigo de barras (que "escribe" caracteres muy rapido y
+  // termina con Enter) igual se reconoce, sin importar donde quedo el foco.
+  // Distingue un escaneo de tecleo humano por la velocidad entre teclas: un
+  // lector manda cada caracter en pocos milisegundos, una persona no.
+  useEffect(() => {
+    const UMBRAL_RAFAGA_MS = 50
+    let buffer = ''
+    let ultimoTiempo = 0
+
+    function alTeclado(e: KeyboardEvent) {
+      if (document.activeElement === inputBarcodeRef.current) return
+      if (e.ctrlKey || e.altKey || e.metaKey) return
+
+      const ahora = Date.now()
+      const rafagaActiva = ahora - ultimoTiempo <= UMBRAL_RAFAGA_MS
+      ultimoTiempo = ahora
+
+      if (e.key === 'Enter') {
+        const codigo = buffer
+        buffer = ''
+        if (!rafagaActiva || codigo.length < 3) return
+        const producto = productosBar.find((p) => p.codigo_barras === codigo)
+        if (producto) {
+          setErrorEscaneo(null)
+          agregarProducto('BAR', producto, 1)
+        } else {
+          setErrorEscaneo(`Codigo no encontrado: ${codigo}`)
+        }
+        return
+      }
+
+      if (e.key.length === 1) {
+        buffer = rafagaActiva ? buffer + e.key : e.key
+      } else {
+        buffer = ''
+      }
+    }
+
+    document.addEventListener('keydown', alTeclado)
+    return () => document.removeEventListener('keydown', alTeclado)
+  }, [productosBar])
+
   const opciones = origen === 'BAR' ? productosBar : productosRestaurante
   const total = carrito.reduce((acc, item) => acc + item.cantidad * item.precio_venta, 0)
 
@@ -277,7 +320,7 @@ function VentaMostrador({
       if (origenProducto === 'BAR' && 'stock' in producto) {
         const restante = producto.stock - yaEnCarrito - cantidadAgregar
         setAvisoStock(
-          restante <= STOCK_BAJO_UMBRAL
+          restante <= producto.umbral_stock_bajo
             ? `Quedan pocas unidades de "${producto.nombre}" (${Math.max(restante, 0)}).`
             : null,
         )

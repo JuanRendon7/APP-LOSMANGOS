@@ -16,6 +16,7 @@ class Habitacion(Base, TimestampMixin):
     id_habitacion: Mapped[int] = mapped_column(primary_key=True)
     numero: Mapped[str] = mapped_column(String(10), unique=True, index=True)
     piso: Mapped[int] = mapped_column(Integer)
+    tipo: Mapped[str] = mapped_column(String(50))
     estado: Mapped[str] = mapped_column(
         SAEnum(*ESTADOS_HABITACION, name="estado_habitacion", native_enum=False),
         server_default="DISPONIBLE",

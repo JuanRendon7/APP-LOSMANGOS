@@ -37,6 +37,7 @@ def _bar_response(producto: ProductoBar, actor: UsuarioActual) -> ProductoBarRes
         codigo_barras=producto.codigo_barras,
         precio_venta=producto.precio_venta,
         stock=producto.stock,
+        umbral_stock_bajo=producto.umbral_stock_bajo,
         activo=producto.activo,
         precio_costo=producto.precio_costo if ver_costos else None,
         margen=margen,

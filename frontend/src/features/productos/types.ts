@@ -17,6 +17,7 @@ export interface ProductoBar {
   codigo_barras: string
   precio_venta: number
   stock: number
+  umbral_stock_bajo: number
   activo: boolean
   precio_costo: number | null
   margen: number | null
@@ -29,5 +30,6 @@ export interface ProductoBarInput {
   precio_costo: number
   precio_venta: number
   stock?: number
+  umbral_stock_bajo?: number
   activo?: boolean
 }

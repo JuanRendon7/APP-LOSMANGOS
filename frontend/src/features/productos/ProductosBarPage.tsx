@@ -1,5 +1,6 @@
 import { Beer, CircleCheck, Coins, PackageX, Search, TriangleAlert } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { ESTILO_TONO } from '@/shared/ui/estado'
 import { AjustarStockModal } from './AjustarStockModal'
@@ -13,23 +14,22 @@ const formatoMoneda = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 0,
 })
 
-const STOCK_BAJO_UMBRAL = 5
-
-function estiloStock(stock: number): string {
+function estiloStock(stock: number, umbral: number): string {
   if (stock <= 0) return ESTILO_TONO.peligro.badge
-  if (stock <= STOCK_BAJO_UMBRAL) return ESTILO_TONO.alerta.badge
+  if (stock <= umbral) return ESTILO_TONO.alerta.badge
   return ESTILO_TONO.exito.badge
 }
 
 export function ProductosBarPage() {
   const { tienePermiso } = useAuth()
+  const [searchParams] = useSearchParams()
   const [productos, setProductos] = useState<ProductoBar[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editando, setEditando] = useState<ProductoBar | null>(null)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [ajustandoStock, setAjustandoStock] = useState<ProductoBar | null>(null)
-  const [busqueda, setBusqueda] = useState('')
+  const [busqueda, setBusqueda] = useState(() => searchParams.get('q') ?? '')
   const [soloActivos, setSoloActivos] = useState(false)
 
   const puedeGestionar = tienePermiso('PRODUCTOS_BAR', 'CREAR')
@@ -62,7 +62,7 @@ export function ProductosBarPage() {
   }
 
   const activos = productos.filter((p) => p.activo)
-  const stockBajo = productos.filter((p) => p.activo && p.stock <= STOCK_BAJO_UMBRAL)
+  const stockBajo = productos.filter((p) => p.activo && p.stock <= p.umbral_stock_bajo)
   const valorInventario = productos.reduce(
     (suma, p) => suma + p.stock * (p.precio_costo ?? 0),
     0,
@@ -227,7 +227,7 @@ export function ProductosBarPage() {
                 )}
                 <td className="px-3 py-2">
                   <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${estiloStock(producto.stock)}`}
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${estiloStock(producto.stock, producto.umbral_stock_bajo)}`}
                   >
                     {producto.stock} und.
                   </span>

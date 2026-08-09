@@ -10,12 +10,21 @@ from src.shared.config import get_settings
 from src.shared.database import SessionLocal
 from src.shared.security import hash_password
 
+
+def _tipo_habitacion(numero: str) -> str:
+    if numero.startswith("1"):
+        return "Sencilla"
+    if numero in ("201", "210"):
+        return "Dos camas"
+    return "Pareja"
+
+
 HABITACIONES = [(numero, 1) for numero in range(102, 109)] + [
     (numero, 2) for numero in range(201, 211)
 ]
 
 RECURSOS_ACCIONES = {
-    "HABITACIONES": ["VER", "CREAR", "EDITAR", "ELIMINAR"],
+    "HABITACIONES": ["VER", "CREAR", "EDITAR", "EDITAR_CATALOGO", "ELIMINAR"],
     "RESERVAS": ["VER", "CREAR", "EDITAR", "ELIMINAR"],
     "HUESPEDES": ["VER", "CREAR", "EDITAR", "ELIMINAR"],
     "TARIFAS": ["VER", "CREAR", "EDITAR", "ELIMINAR"],
@@ -34,7 +43,7 @@ RECURSOS_ACCIONES = {
 }
 
 EMPLEADO_PERMISOS = {
-    "HABITACIONES": ["VER", "CREAR", "EDITAR"],
+    "HABITACIONES": ["VER", "EDITAR"],
     "RESERVAS": ["VER", "CREAR", "EDITAR"],
     "HUESPEDES": ["VER", "CREAR", "EDITAR"],
     "PRODUCTOS_RESTAURANTE": ["VER"],
@@ -169,7 +178,13 @@ def seed() -> None:
                 .one_or_none()
             )
             if existe is None:
-                db.add(Habitacion(numero=str(numero), piso=piso))
+                db.add(
+                    Habitacion(
+                        numero=str(numero),
+                        piso=piso,
+                        tipo=_tipo_habitacion(str(numero)),
+                    )
+                )
 
         db.commit()
         print("Seed de RBAC completo.")

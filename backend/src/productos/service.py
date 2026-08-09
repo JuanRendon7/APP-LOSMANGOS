@@ -70,6 +70,7 @@ class ProductosService:
             precio_costo=datos.precio_costo,
             precio_venta=datos.precio_venta,
             stock=datos.stock,
+            umbral_stock_bajo=datos.umbral_stock_bajo,
         )
         return self.repository.crear_bar(producto)
 
@@ -85,6 +86,8 @@ class ProductosService:
             producto.precio_costo = datos.precio_costo
         if datos.precio_venta is not None:
             producto.precio_venta = datos.precio_venta
+        if datos.umbral_stock_bajo is not None:
+            producto.umbral_stock_bajo = datos.umbral_stock_bajo
         if datos.activo is not None:
             producto.activo = datos.activo
         return producto

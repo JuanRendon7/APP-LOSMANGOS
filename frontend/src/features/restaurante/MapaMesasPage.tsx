@@ -7,6 +7,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { ESTILO_TONO } from '@/shared/ui/estado'
 import { actualizarMesa, listarMesas } from './api'
@@ -153,16 +154,22 @@ function MesaIlustrada({
 
 export function MapaMesasPage() {
   const { tienePermiso } = useAuth()
+  const [searchParams] = useSearchParams()
   const [mesas, setMesas] = useState<Mesa[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [idSeleccionada, setIdSeleccionada] = useState<number | null>(null)
+  const [idSeleccionada, setIdSeleccionada] = useState<number | null>(() => {
+    const id = searchParams.get('id')
+    return id ? Number(id) : null
+  })
   const [modoEdicion, setModoEdicion] = useState(false)
   const [mostrarFormMesa, setMostrarFormMesa] = useState(false)
+  const [editandoMesa, setEditandoMesa] = useState<Mesa | null>(null)
   const [guardando, setGuardando] = useState(false)
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const arrastrandoRef = useRef<number | null>(null)
+  const seMovioRef = useRef(false)
   const modificadasRef = useRef<Set<number>>(new Set())
 
   const puedeEditarMapa = tienePermiso('MESAS', 'EDITAR')
@@ -188,6 +195,14 @@ export function MapaMesasPage() {
     const id = setInterval(recargar, 20000)
     return () => clearInterval(id)
   }, [modoEdicion, recargar])
+
+  // La busqueda global navega con ?id=; si ya estabamos en esta pagina, React
+  // Router no remonta el componente (mismo path), asi que el useState inicial
+  // no se entera de un ?id= que cambia despues sin este efecto.
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (id) setIdSeleccionada(Number(id))
+  }, [searchParams])
 
   const seleccionada = mesas.find((m) => m.id_mesa === idSeleccionada) ?? null
 
@@ -260,7 +275,10 @@ export function MapaMesasPage() {
             {modoEdicion && (
               <button
                 type="button"
-                onClick={() => setMostrarFormMesa(true)}
+                onClick={() => {
+                  setEditandoMesa(null)
+                  setMostrarFormMesa(true)
+                }}
                 className="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-secondary"
               >
                 Agregar mesa
@@ -283,7 +301,8 @@ export function MapaMesasPage() {
       {error && <p className="text-sm text-destructive">{error}</p>}
       {modoEdicion && (
         <p className="text-xs text-muted-foreground">
-          Arrastra las mesas a su posicion y luego "Guardar posiciones".
+          Arrastra una mesa para moverla (y luego "Guardar posiciones"), o toca una mesa
+          sin arrastrarla para editar su nombre y capacidad.
         </p>
       )}
 
@@ -360,16 +379,23 @@ export function MapaMesasPage() {
                 if (!modoEdicion) return
                 e.currentTarget.setPointerCapture(e.pointerId)
                 arrastrandoRef.current = mesa.id_mesa
+                seMovioRef.current = false
               }}
               onPointerMove={(e) => {
                 if (arrastrandoRef.current !== mesa.id_mesa) return
+                seMovioRef.current = true
                 moverMesa(mesa.id_mesa, e.clientX, e.clientY)
               }}
               onPointerUp={() => {
                 arrastrandoRef.current = null
               }}
               onClick={() => {
-                if (modoEdicion) return
+                if (modoEdicion) {
+                  if (seMovioRef.current) return
+                  setEditandoMesa(mesa)
+                  setMostrarFormMesa(true)
+                  return
+                }
                 setIdSeleccionada(mesa.id_mesa)
               }}
             >
@@ -399,8 +425,9 @@ export function MapaMesasPage() {
 
       {mostrarFormMesa && (
         <MesaFormModal
+          mesaExistente={editandoMesa}
           onCerrar={() => setMostrarFormMesa(false)}
-          onCreada={() => {
+          onGuardada={() => {
             setMostrarFormMesa(false)
             recargar()
           }}

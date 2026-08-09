@@ -8,6 +8,8 @@ from src.auth.schemas import UsuarioActual
 from src.hospedaje.dependencies import get_hospedaje_service
 from src.hospedaje.models import Habitacion, Huesped, Reserva
 from src.hospedaje.schemas import (
+    HabitacionCreate,
+    HabitacionInfoUpdate,
     HabitacionResponse,
     HabitacionUpdate,
     HuespedResponse,
@@ -47,6 +49,7 @@ def _habitacion_response(
         id_habitacion=habitacion.id_habitacion,
         numero=habitacion.numero,
         piso=habitacion.piso,
+        tipo=habitacion.tipo,
         estado=habitacion.estado,
         reserva_activa=_reserva_response(reserva_activa) if reserva_activa else None,
     )
@@ -86,6 +89,52 @@ def actualizar_habitacion(
         ) from exc
     db.refresh(habitacion)
     # Las transiciones manuales nunca dejan la habitacion en OCUPADA.
+    return _habitacion_response(habitacion, None)
+
+
+@habitaciones_router.post(
+    "", response_model=HabitacionResponse, status_code=status.HTTP_201_CREATED
+)
+def crear_habitacion(
+    datos: HabitacionCreate,
+    db: Session = Depends(get_db),
+    _: UsuarioActual = Depends(requiere_permiso("HABITACIONES", "CREAR")),
+    servicio: HospedajeService = Depends(get_hospedaje_service),
+):
+    try:
+        habitacion = servicio.crear_habitacion(datos)
+        db.commit()
+    except ConflictError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
+    db.refresh(habitacion)
+    return _habitacion_response(habitacion, None)
+
+
+@habitaciones_router.patch("/{id_habitacion}/info", response_model=HabitacionResponse)
+def actualizar_habitacion_info(
+    id_habitacion: int,
+    datos: HabitacionInfoUpdate,
+    db: Session = Depends(get_db),
+    _: UsuarioActual = Depends(requiere_permiso("HABITACIONES", "EDITAR_CATALOGO")),
+    servicio: HospedajeService = Depends(get_hospedaje_service),
+):
+    try:
+        habitacion = servicio.actualizar_habitacion_info(id_habitacion, datos)
+        db.commit()
+    except NotFoundError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except ConflictError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
+        ) from exc
+    db.refresh(habitacion)
     return _habitacion_response(habitacion, None)
 
 

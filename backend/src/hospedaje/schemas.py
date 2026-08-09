@@ -33,6 +33,7 @@ class HabitacionResponse(BaseModel):
     id_habitacion: int
     numero: str
     piso: int
+    tipo: str
     estado: str
     reserva_activa: ReservaResponse | None = None
 
@@ -41,6 +42,18 @@ class HabitacionResponse(BaseModel):
 
 class HabitacionUpdate(BaseModel):
     estado: str
+
+
+class HabitacionCreate(BaseModel):
+    numero: str = Field(min_length=1, max_length=10)
+    piso: int = Field(ge=1)
+    tipo: str = Field(min_length=1, max_length=50)
+
+
+class HabitacionInfoUpdate(BaseModel):
+    numero: str | None = Field(default=None, min_length=1, max_length=10)
+    piso: int | None = Field(default=None, ge=1)
+    tipo: str | None = Field(default=None, min_length=1, max_length=50)
 
 
 class ReservaCreate(BaseModel):

@@ -1,5 +1,6 @@
 import { BedDouble, LogIn, LogOut, Sparkles, UserRound, Wrench, type LucideIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router'
 import { ESTILO_TONO } from '@/shared/ui/estado'
 import { actualizarEstadoHabitacion, listarHabitaciones, listarReservas } from './api'
 import { ReservaDetailPanel } from './ReservaDetailPanel'
@@ -16,9 +17,9 @@ interface EstadoConfig {
 
 const ESTADO_CONFIG: Record<EstadoHabitacion, EstadoConfig> = {
   DISPONIBLE: { label: 'Disponible', icon: BedDouble, ...ESTILO_TONO.exito },
-  OCUPADA: { label: 'Ocupada', icon: UserRound, ...ESTILO_TONO.info },
-  LIMPIEZA: { label: 'Limpieza', icon: Sparkles, ...ESTILO_TONO.alerta },
-  MANTENIMIENTO: { label: 'Mantenimiento', icon: Wrench, ...ESTILO_TONO.peligro },
+  OCUPADA: { label: 'Ocupada', icon: UserRound, ...ESTILO_TONO.peligro },
+  LIMPIEZA: { label: 'Limpieza', icon: Sparkles, ...ESTILO_TONO.amarillo },
+  MANTENIMIENTO: { label: 'Mantenimiento', icon: Wrench, ...ESTILO_TONO.alerta },
 }
 
 function PuertaIlustrada({
@@ -75,10 +76,14 @@ function hoyISO(): string {
 }
 
 export function HabitacionesPage() {
+  const [searchParams] = useSearchParams()
   const [habitaciones, setHabitaciones] = useState<Habitacion[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [idSeleccionada, setIdSeleccionada] = useState<number | null>(null)
+  const [idSeleccionada, setIdSeleccionada] = useState<number | null>(() => {
+    const id = searchParams.get('id')
+    return id ? Number(id) : null
+  })
   const [mostrarFormReserva, setMostrarFormReserva] = useState(false)
   const [refreshToken, setRefreshToken] = useState(0)
   const [filtro, setFiltro] = useState<EstadoHabitacion | 'TODAS'>('TODAS')
@@ -114,6 +119,15 @@ export function HabitacionesPage() {
       panelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [idSeleccionada])
+
+  // La busqueda global navega con ?id=, pero si ya estabamos en esta pagina
+  // React Router no vuelve a montar el componente (mismo path) — sin este
+  // efecto, el useState inicial (que solo lee la URL una vez) nunca se entera
+  // de un ?id= que cambia despues.
+  useEffect(() => {
+    const id = searchParams.get('id')
+    if (id) setIdSeleccionada(Number(id))
+  }, [searchParams])
 
   const seleccionada = habitaciones.find((h) => h.id_habitacion === idSeleccionada) ?? null
 
@@ -276,6 +290,9 @@ export function HabitacionesPage() {
                       seleccionada={idSeleccionada === habitacion.id_habitacion}
                     />
                     <div className="space-y-1 rounded-b-lg border border-t-0 border-border bg-card px-2 py-1.5">
+                      <div className="truncate text-[10px] font-medium text-muted-foreground">
+                        {habitacion.tipo}
+                      </div>
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${cfg.badge}`}
                       >

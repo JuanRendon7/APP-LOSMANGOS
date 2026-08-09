@@ -62,6 +62,27 @@ def test_admin_crea_producto_bar_con_margen(client, usuario_admin):
     assert datos["margen"] == 3000
     assert datos["margen_porcentaje"] == 150.0
     assert datos["stock"] == 24
+    assert datos["umbral_stock_bajo"] == 5
+
+
+def test_admin_configura_umbral_de_stock_bajo_por_producto(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+
+    creado = client.post(
+        "/productos-bar",
+        headers=headers,
+        json=_payload_bar(codigo_barras="222", umbral_stock_bajo=15),
+    )
+    assert creado.status_code == 201, creado.text
+    assert creado.json()["umbral_stock_bajo"] == 15
+
+    editado = client.patch(
+        f"/productos-bar/{creado.json()['id_producto']}",
+        headers=headers,
+        json={"umbral_stock_bajo": 8},
+    )
+    assert editado.status_code == 200, editado.text
+    assert editado.json()["umbral_stock_bajo"] == 8
 
 
 def test_crear_producto_bar_rechaza_codigo_duplicado(client, usuario_admin):

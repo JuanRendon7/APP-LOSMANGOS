@@ -20,6 +20,7 @@ import { NavLink, useLocation } from 'react-router'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { cn } from '@/shared/lib/utils'
 import { NotificationBell } from '@/shared/notifications/NotificationBell'
+import { GlobalSearch } from '@/shared/search/GlobalSearch'
 import { MangoIcon } from '@/shared/ui/MangoIcon'
 import { BrandBackdrop } from './BrandBackdrop'
 
@@ -62,12 +63,23 @@ const GRUPOS: Grupo[] = [
       enlaces: [
         {
           to: '/productos/restaurante',
-          label: 'Restaurante',
+          label: 'Productos restaurante',
           recurso: 'PRODUCTOS_RESTAURANTE',
           icon: UtensilsCrossed,
         },
-        { to: '/productos/bar', label: 'Bar', recurso: 'PRODUCTOS_BAR', icon: Beer },
-        { to: '/tarifario', label: 'Tarifario', recurso: 'TARIFAS', icon: Tag },
+        {
+          to: '/productos/bar',
+          label: 'Productos Bar',
+          recurso: 'PRODUCTOS_BAR',
+          icon: Beer,
+        },
+        { to: '/tarifario', label: 'Tarifa Hotel', recurso: 'TARIFAS', icon: Tag },
+        {
+          to: '/habitaciones/catalogo',
+          label: 'Habitaciones',
+          recurso: 'HABITACIONES',
+          icon: BedDouble,
+        },
         { to: '/configuracion', label: 'Notificaciones', recurso: 'CONFIGURACION', icon: Bell },
       ],
     },
@@ -81,21 +93,24 @@ const TITULOS_PAGINA: Record<string, string> = {
   '/habitaciones': 'Habitaciones',
   '/reportes': 'Reportes',
   '/restaurante/mesas': 'Mesas',
-  '/productos/restaurante': 'Restaurante',
-  '/productos/bar': 'Bar',
-  '/tarifario': 'Tarifario',
+  '/productos/restaurante': 'Productos restaurante',
+  '/productos/bar': 'Productos Bar',
+  '/tarifario': 'Tarifa Hotel',
   '/caja': 'Caja',
   '/usuarios': 'Usuarios',
   '/configuracion': 'Notificaciones',
+  '/habitaciones/catalogo': 'Habitaciones',
 }
 
 function ItemEnlace({
   enlace,
   colapsado,
+  indentado,
   onClick,
 }: {
   enlace: Enlace
   colapsado: boolean
+  indentado?: boolean
   onClick: () => void
 }) {
   const Icono = enlace.icon
@@ -115,7 +130,9 @@ function ItemEnlace({
         }
       >
         <Icono size={18} className="shrink-0" />
-        {!colapsado && <span className="truncate">{enlace.label}</span>}
+        {!colapsado && (
+          <span className={indentado ? 'leading-tight' : 'truncate'}>{enlace.label}</span>
+        )}
       </NavLink>
     </li>
   )
@@ -159,8 +176,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col border-r border-border bg-marca-100/80 transition-transform duration-200 lg:static lg:z-0 lg:translate-x-0 lg:transition-[width]',
-          colapsado ? 'lg:w-[76px]' : 'lg:w-64',
+          'fixed inset-y-0 left-0 z-50 flex w-56 -translate-x-full flex-col border-r border-border bg-marca-100/80 transition-transform duration-200 lg:static lg:z-0 lg:translate-x-0 lg:transition-[width]',
+          colapsado ? 'lg:w-[76px]' : 'lg:w-56',
           abiertoMovil && 'translate-x-0',
         )}
       >
@@ -235,12 +252,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                           <span className="truncate">{grupo.subgrupo?.titulo}</span>
                         </button>
                         {maestrosAbierto && (
-                          <ul className="mt-0.5 ml-4 space-y-0.5 border-l border-border pl-3.5">
+                          <ul className="mt-0.5 ml-2.5 space-y-0.5 border-l border-border pl-2">
                             {visiblesSubgrupo.map((enlace) => (
                               <ItemEnlace
                                 key={enlace.to}
                                 enlace={enlace}
                                 colapsado={colapsado}
+                                indentado
                                 onClick={() => setAbiertoMovil(false)}
                               />
                             ))}
@@ -310,7 +328,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <p className="font-serif text-lg font-semibold tracking-tight text-foreground">
             {TITULOS_PAGINA[location.pathname] ?? 'Hotel Los Mangos'}
           </p>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-3">
+            <GlobalSearch />
             <NotificationBell />
           </div>
         </header>

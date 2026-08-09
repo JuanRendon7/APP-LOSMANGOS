@@ -2,7 +2,12 @@ from datetime import UTC, datetime
 
 from src.hospedaje.models import ESTADOS_HABITACION, Habitacion, Huesped, Reserva
 from src.hospedaje.repository import HospedajeRepository
-from src.hospedaje.schemas import ReservaCreate, ReservaUpdate
+from src.hospedaje.schemas import (
+    HabitacionCreate,
+    HabitacionInfoUpdate,
+    ReservaCreate,
+    ReservaUpdate,
+)
 from src.shared.exceptions import BusinessRuleError, ConflictError, NotFoundError
 from src.tarifas.service import TarifasService
 
@@ -44,6 +49,33 @@ class HospedajeService:
                 f"No se puede pasar de '{habitacion.estado}' a '{nuevo_estado}'"
             )
         habitacion.estado = nuevo_estado
+        return habitacion
+
+    def _validar_numero_disponible(
+        self, numero: str, excluir_id_habitacion: int | None = None
+    ) -> None:
+        existente = self.repository.obtener_habitacion_por_numero(numero)
+        if existente is not None and existente.id_habitacion != excluir_id_habitacion:
+            raise ConflictError(f"Ya existe una habitacion con el numero '{numero}'")
+
+    def crear_habitacion(self, datos: HabitacionCreate) -> Habitacion:
+        self._validar_numero_disponible(datos.numero)
+        habitacion = Habitacion(numero=datos.numero, piso=datos.piso, tipo=datos.tipo)
+        return self.repository.crear_habitacion(habitacion)
+
+    def actualizar_habitacion_info(
+        self, id_habitacion: int, datos: HabitacionInfoUpdate
+    ) -> Habitacion:
+        habitacion = self.repository.obtener_habitacion(id_habitacion)
+        if habitacion is None:
+            raise NotFoundError("Habitacion no encontrada")
+        if datos.numero is not None and datos.numero != habitacion.numero:
+            self._validar_numero_disponible(datos.numero, id_habitacion)
+            habitacion.numero = datos.numero
+        if datos.piso is not None:
+            habitacion.piso = datos.piso
+        if datos.tipo is not None:
+            habitacion.tipo = datos.tipo
         return habitacion
 
     # Huespedes

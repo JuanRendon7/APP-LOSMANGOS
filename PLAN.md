@@ -1,7 +1,8 @@
 # Hotel Los Mangos — Plan y estado del proyecto
 
-Última actualización: 2026-08-07 (Fase 4, rediseño visual, Fase 5: mesas/pedidos/comanda,
-Fase 6: consumo a habitación, y Fase 7: caja).
+Última actualización: 2026-08-08 (Fase 8: reportería por área de negocio, notificaciones
+con sonido, corrección de caja compartida, rediseño ilustrado de habitaciones/mesas,
+colores de estado unificados y reordenamiento del sidebar).
 
 ## Qué es esto
 
@@ -189,12 +190,37 @@ dependencies.py # get_xxx_service(db=Depends(get_db))
    Andamiaje para exactamente este fin — es `REPORTES:VER` (solo ADMINISTRADOR). Se
    corrigió en `App.tsx`/`AppShell.tsx` y "Reportes" se movió del grupo Operación al
    grupo Administración del sidebar, junto con Tarifario y Usuarios.
-8. **Fase 8: Reportería**. Recurso ya sembrado: `REPORTES`.
-9. **Fase 9: Sincronización con Booking.com** (iCal). Ya existe
-   `BOOKING_ICAL_TOKEN_SECRET` en la config del backend y la librería `icalendar` en
-   `pyproject.toml`, sin usar todavía. `Reserva` ya tiene `origen` y
+8. ~~**Fase 8: Reportería**~~ — DONE (2026-08-08). Sin paquete backend propio: es
+   100% frontend, alimentado por endpoints que ya existían de fases anteriores
+   (`listarHabitaciones`, `listarReservas`, `listarVentas`, `listarTurnos`,
+   `listarProductosBar/Restaurante`, `listarGastos`). `frontend/src/features/reportes/`
+   se reorganizó en pestañas por área de negocio en vez de una sola página con todo
+   mezclado: `ReportesPage.tsx` (selector de pestaña + `RangoFechas` compartido) +
+   `HotelTab.tsx` (ocupación, reservas por estado, ingresos por habitación, export CSV
+   de reservas), `RestauranteTab.tsx` (ventas de mesa/mostrador de restaurante por
+   método de pago), `BarTab.tsx` (ídem para bar + valor de inventario + alerta de stock
+   bajo), `CajaTab.tsx` (histórico de turnos, recaudo por método, turnos con descuadre,
+   export CSV). Cada tab reutiliza los componentes compartidos de `reportes/shared.tsx`
+   (`StatCard`, `Chip`, `formatoMoneda`). Gateado con `REPORTES:VER` (solo admin, ya
+   corregido en la Fase 7.5). El viejo dashboard "Resumen" (KPIs clickeables + gráficas)
+   ya estaba fusionado dentro de esta página desde el rediseño visual del 2026-08-07;
+   con esta fase se reorganizó ese contenido dentro de `HotelTab`.
+9. **Fase 9: Sincronización con Booking.com** (iCal) — pendiente, en pausa. Ya existe
+   `BOOKING_ICAL_TOKEN_SECRET` en la config del backend, la librería `icalendar` en
+   `pyproject.toml` (sin usar todavía) y Celery+Redis+Beat corriendo en Docker Compose
+   pero sin ninguna tarea registrada (`include=[]` en `celery_app.py`) — sería la
+   primera tarea periódica real del proyecto. `Reserva` ya tiene `origen` y
    `referencia_externa` preparados para distinguir reservas directas de las
-   sincronizadas. Recurso ya sembrado: `BOOKING_SYNC`.
+   sincronizadas, pero `referencia_externa` no tiene constraint de unicidad todavía
+   (hace falta para no importar la misma reserva de Booking dos veces). Recurso ya
+   sembrado: `BOOKING_SYNC` (solo admin). **Bloqueada** (2026-08-08) hasta que el
+   usuario confirme cómo está publicado el hotel en Booking.com: si cada habitación
+   (102...210) es su propio listado/calendario, o si Booking agrupa varias
+   habitaciones físicas en pocos "tipos de habitación" — esto cambia por completo
+   cómo mapear las reservas que lleguen de allá a una `Habitacion` concreta. También
+   falta decidir si el alcance es solo importar reservas de Booking, solo exportar las
+   propias, o ambas direcciones (el usuario ya pidió ambas direcciones cuando se
+   retome).
 
 ## Rediseño visual (2026-08-07): sidebar + marca
 
@@ -206,9 +232,15 @@ Detalles:
 - **Paleta de marca**: extraída de `docs/unnamed.jpg` (foto del letrero "Los Mangos ·
   Hotel & Restaurante" — pared beige/taupe cálida, tinta casi negra, resplandor cálido
   de spots). Tokens en `frontend/src/index.css` (`@theme`): escala `--color-marca-*`
-  ahora es un neutro cálido (antes gris puro), `--color-primary` es terracota/naranja
-  quemado (antes gris oscuro) y se usa para botones primarios, ítem de nav activo y
-  gráficas. Tokens nuevos `--color-chart-2/3/4` solo para gráficas.
+  neutro cálido (antes gris puro). **Sin acento naranja** (se probó una versión
+  terracota primero y se descartó del todo, incluido en el commit `cf6942d`): hoy
+  `--color-primary` es la propia tinta oscura del logo (`--color-marca-800`), y el
+  segundo color de marca es `--color-mango-*` (verde hoja, deliberadamente más
+  oliva/bosque que el esmeralda que ya se usaba para el estado "disponible", para no
+  confundir marca con estado — ver la unificación de colores de estado del
+  2026-08-08 más abajo) más `--color-oro-*` (dorado, solo acentos puntuales: líneas,
+  subrayados, nunca fondos ni botones). Tokens nuevos `--color-chart-2/3/4` solo para
+  gráficas.
 - **Icono de marca**: `frontend/src/shared/ui/MangoIcon.tsx` — SVG dibujado a mano
   (dos hojas + mango con línea de brillo), no la foto (que es un mockup de pared, no
   escala bien a tamaños pequeños). Usar este componente para cualquier lugar nuevo que
@@ -369,11 +401,77 @@ Detalles:
   a Reportes" de la tarjeta de detalle de KPI para "Reservas activas" ya no tiene
   sentido (es la misma página) y se quitó; los demás KPIs conservan su botón "Ir a
   Habitaciones".
-- **No se retocaron** los colores de estado ya existentes en páginas de Fase 2-4
-  (verde/azul/ámbar/rojo de habitaciones, verde/rojo de productos) — quedan con su
-  paleta original de Tailwind, solo el shell/marca/dashboard usan los tokens nuevos.
-  Si se quiere unificar eso con la paleta cálida, es trabajo pendiente, no se hizo en
-  esta sesión.
+- **Autocompletar huésped por nombre además de por cédula (2026-08-08)**: el
+  `ReservaFormModal.tsx` ya autollenaba cédula/contacto/placa por coincidencia exacta
+  de cédula (Fase 2). Se agregó búsqueda con debounce por nombre
+  (`buscarHuespedes(texto)`, ya existía en el backend) con un dropdown de sugerencias;
+  al elegir una, `aplicarHuesped()` llena el resto de campos igual que el flujo por
+  cédula. No se creó una tabla `personas` nueva — el dueño la pidió pero `Huesped`
+  (cédula única, Fase 2) ya cumple ese rol; solo faltaba el segundo camino de
+  autocompletado.
+- **Campana de notificaciones (2026-08-08)**: `frontend/src/shared/notifications/`
+  (nuevo, sin paquete backend — se computa en el cliente sondeando endpoints que ya
+  existían cada 60s vía `useNotificaciones.ts`). Seis tipos: stock bajo de bar,
+  llegadas de hoy, checkouts de hoy, check-in atrasado (los tres de habitaciones,
+  gateados por `HABITACIONES:VER`), turno de caja abierto hace más de 12h y descuadre
+  de caja del día anterior (estos dos gateados por `REPORTES:VER`, o sea solo admin).
+  Click en una notificación abre un modal de detalle con botón "Ir a la sección" y
+  "Eliminar"; lectura/descarte se guardan en `localStorage` (por navegador, no por
+  cuenta — descarte con TTL de 20h, sin sync entre dispositivos, aceptado como
+  simplificación razonable para el tamaño de este negocio). **Sonido configurable**:
+  `sonidos.ts` sintetiza 5 tonos con Web Audio API (osciladores, sin archivos de
+  audio) — suena solo cuando aparece una notificación genuinamente nueva (no en la
+  carga inicial de la página, para no pitar con alertas viejas pendientes). El sonido
+  por defecto del hotel se elige en Maestros → Notificaciones
+  (`backend/src/configuracion/`, paquete nuevo con tabla clave/valor genérica
+  `configuracion_app`, pensada para crecer con más ajustes de parametrización más
+  adelante) — `CONFIGURACION:VER` para todos, `CONFIGURACION:EDITAR` solo admin.
+- **Habitaciones y Mesas: rediseño ilustrado (2026-08-08)**: a pedido del usuario
+  ("que se vea 3D, buen diseño"), se reemplazaron las tarjetas planas por objetos
+  ilustrados con CSS/SVG (gradientes radiales imitando madera + anillo de color de
+  estado + insignia circular con ícono), sin librería 3D nueva (Three.js se evaluó y
+  se descartó por peso/latencia frente al ritmo operativo de "tocar rápido").
+  `MapaMesasPage.tsx`: mesas con sillas posicionadas por trigonometría alrededor de
+  un tablero circular. `HabitacionesPage.tsx`: puertas con marca "Hotel Los Mangos" en
+  verde centrada. El panel de detalle de reserva (`ReservaDetailPanel.tsx`) se movió
+  de debajo de la grilla de habitaciones a arriba de todo (con scroll automático al
+  seleccionar una habitación) y se compactó a un layout horizontal en vez de bloques
+  apilados, porque quedaba siempre fuera de vista y ocupaba demasiado espacio vertical.
+- **Caja compartida para todo el hotel (2026-08-08)**: se descubrió que el modelo
+  original de la Fase 7 ("un usuario no puede tener dos turnos abiertos a la vez, pero
+  sí pueden coexistir turnos abiertos de distintos usuarios") no encajaba con el
+  negocio real — el hotel tiene **un solo cajón físico**, así que dos empleados
+  podían terminar cada uno con su propia caja abierta sobre el mismo efectivo. Se
+  corrigió `backend/src/caja/` para que el turno abierto sea uno solo para todo el
+  hotel, sin importar qué usuario lo abrió: `CajaRepository.obtener_turno_abierto()`
+  ya no filtra por `id_usuario`; cualquiera con `CAJA:VER` ve el turno abierto por
+  cualquier otro (con su nombre, campo `nombre_usuario` nuevo en la respuesta) y
+  cualquiera con `CAJA:CERRAR` puede cerrarlo, no solo quien lo abrió — necesario para
+  un cambio de turno normal. Esto también resolvió de encajada un callejón sin salida:
+  antes, si alguien olvidaba cerrar su caja, nadie más podía verla ni cerrarla; ahora
+  cualquiera que entre la ve y puede actuar. De paso se corrigió un bug real de huso
+  horario en `CajaRepository._inicio_dia`/`_fin_dia` (usaban UTC en vez de
+  `America/Bogota`, así que los filtros "de hoy" en Caja/Reportes perdían movimientos
+  hechos en la noche colombiana).
+- **Colores de estado unificados con la marca (2026-08-08)**: resuelve la nota
+  pendiente de la sesión anterior. Antes cada pantalla (Habitaciones, Mesas,
+  Productos, Caja, notificaciones) reinventaba su propia combinación de
+  `emerald/blue/amber/red` de Tailwind, con pesos ligeramente distintos entre sí.
+  Se agregaron 4 escalas nuevas a `frontend/src/index.css` (`exito`, `alerta`,
+  `peligro`, `info`), con el mismo criterio de croma/luminosidad que `marca`/`mango`/
+  `oro` — en particular `alerta` se alejó a propósito del matiz de `oro` para que un
+  acento dorado decorativo nunca se confunda con una insignia de advertencia. Fuente
+  única de verdad: `frontend/src/shared/ui/estado.ts` (`ESTILO_TONO`), que cada
+  página consume en vez de reinventar. Ojo: las clases de Tailwind ahí van escritas
+  completas y literales (`'bg-exito-100 text-exito-800'`), no armadas con template
+  strings (`` `bg-${tono}-100` ``) — Tailwind solo genera clases que puede ver como
+  texto completo en el código fuente.
+- **Sidebar: Maestros dentro de Administración (2026-08-08)**: a pedido del usuario
+  ("simplificar, hay muchas cards"), el grupo `Maestros` (Restaurante/Bar/Tarifario/
+  Notificaciones) dejó de ser una sección propia del sidebar y pasó a ser una
+  subsección colapsable dentro de `Administración` (junto a Reportes y Usuarios),
+  colapsada por defecto pero que se auto-expande si la ruta activa es una de las
+  suyas. El sidebar bajó de 3 grupos a 2 (`Operación`, `Administración`).
 
 ## Decisiones y convenciones a mantener
 
@@ -412,20 +510,18 @@ Detalles:
 
 ## Pendiente de decidir con el usuario (aún no se ha preguntado)
 
-- Alcance exacto de "Reportería" (qué reportes específicos, más allá del export CSV de
-  reservas que ya existe en `/reportes` desde el rediseño visual).
-- Fase 9 (Booking.com): detalles de la sincronización iCal (¿solo importar reservas
-  externas, o también exportar las propias?).
+- Fase 9 (Booking.com), **bloqueada** hasta que el usuario responda: (a) si cada
+  habitación tiene su propio listado/calendario en Booking o si Booking agrupa varias
+  habitaciones en pocos "tipos de habitación"; el alcance (importar/exportar/ambas) ya
+  se definió como **ambas direcciones** cuando se retome.
 
-## Estado de git al cerrar esta sesión
+## Estado de git al cerrar esta sesión (2026-08-08)
 
-Fases 0-3 en `39decf7`/`d326aa5`, y Fases 4-7 + rediseño visual + marca +
-Vender/escaneo de código de barras en `cfb4bff` — todo eso pusheado a `origin/main`.
-Después de ese commit se agregaron, **sin commitear todavía**: el ajuste de nitidez del
-fondo de marca, las mejoras de "Movimientos de este turno" (total del turno, aviso de
-stock bajo, acceso a cerrar caja, deshacer última venta — esto último con cambios de
-backend en `src/caja/`), la fusión de "Resumen" dentro de "Reportes", y la gestión de
-usuarios (`src/auth/` + `cedula`/`celular` en `Usuario` + migración +
-`features/usuarios/` en el frontend), incluyendo la corrección del gateo de Reportes a
-`REPORTES:VER`. `git log`/`git status` lo confirman rápido si hace falta verificar en
-la próxima sesión.
+Todo pusheado a `origin/main`, working tree limpio. Fases 0-7.5 en los commits previos
+(`39decf7`, `d326aa5`, `cfb4bff`, `a05e3dc`, `cf6942d`) y todo el trabajo de esta
+sesión — Fase 8 (reportería por área), notificaciones con sonido y su configuración
+(`src/configuracion/`, paquete nuevo), corrección de caja compartida + fix de huso
+horario, autocompletar huésped por nombre, rediseño ilustrado de habitaciones/mesas,
+colores de estado unificados (`shared/ui/estado.ts`, nuevo) y el sidebar con Maestros
+anidado — en `ea57ad9`. `git log`/`git status` lo confirman rápido si hace falta
+verificar en la próxima sesión.

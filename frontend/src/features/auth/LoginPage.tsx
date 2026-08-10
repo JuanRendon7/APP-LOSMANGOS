@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router'
 import { z } from 'zod'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { MangoIcon } from '@/shared/ui/MangoIcon'
+import { PasswordInput } from '@/shared/ui/PasswordInput'
 
 const loginSchema = z.object({
   email: z.string().email({ error: 'Ingresa un correo valido' }),
@@ -99,12 +100,11 @@ export function LoginPage() {
                 name="password"
                 control={control}
                 render={({ field }) => (
-                  <input
+                  <PasswordInput
                     {...field}
                     id="password"
-                    type="password"
                     autoComplete="current-password"
-                    className="w-full border-b-2 border-input bg-transparent px-0.5 py-2.5 text-sm outline-none transition-colors focus:border-primary"
+                    className="w-full border-b-2 border-input bg-transparent px-0.5 py-2.5 pr-8 text-sm outline-none transition-colors focus:border-primary"
                   />
                 )}
               />

@@ -232,7 +232,7 @@ export function GlobalSearch() {
     habitaciones.find((h) => h.reserva_activa?.huesped.id_huesped === huesped.id_huesped) ?? null
 
   return (
-    <div ref={contenedorRef} className="relative w-full max-w-xs">
+    <div ref={contenedorRef} className="relative w-28 sm:w-full sm:max-w-xs">
       <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 focus-within:ring-2 focus-within:ring-ring">
         <Search size={15} className="shrink-0 text-muted-foreground" />
         <input
@@ -263,7 +263,7 @@ export function GlobalSearch() {
       </div>
 
       {abierto && buscando && (
-        <div className="absolute right-0 z-50 mt-1.5 max-h-96 w-80 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
+        <div className="absolute right-0 z-50 mt-1.5 max-h-96 w-[calc(100vw-2rem)] max-w-80 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
           {!hayResultados && (
             <p className="px-3 py-6 text-center text-sm text-muted-foreground">Sin resultados.</p>
           )}

@@ -328,10 +328,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <PanelLeft size={18} />
           </button>
-          <p className="font-serif text-lg font-semibold tracking-tight text-foreground">
+          <p className="min-w-0 flex-1 truncate font-serif text-lg font-semibold tracking-tight text-foreground sm:flex-none">
             {TITULOS_PAGINA[location.pathname] ?? 'Hotel Los Mangos'}
           </p>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex min-w-0 items-center gap-3">
             <GlobalSearch />
             <NotificationBell />
           </div>

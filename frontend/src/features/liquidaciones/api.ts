@@ -2,11 +2,11 @@ import { apiClient } from '@/shared/api/client'
 import type { Liquidacion, LiquidacionCreateInput, LiquidacionUpdateInput } from './types'
 
 export async function listarLiquidaciones(params: {
-  idUsuario?: number
+  nombreEmpleado?: string
   periodo?: string
 }): Promise<Liquidacion[]> {
   const { data } = await apiClient.get<Liquidacion[]>('/liquidaciones', {
-    params: { id_usuario: params.idUsuario, periodo: params.periodo },
+    params: { nombre_empleado: params.nombreEmpleado, periodo: params.periodo },
   })
   return data
 }

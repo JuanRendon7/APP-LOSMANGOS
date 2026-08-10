@@ -1,4 +1,3 @@
-from src.auth.repository import AuthRepository
 from src.liquidaciones.models import LiquidacionEmpleado
 from src.liquidaciones.repository import LiquidacionesRepository
 from src.liquidaciones.schemas import LiquidacionEmpleadoCreate, LiquidacionEmpleadoUpdate
@@ -6,16 +5,13 @@ from src.shared.exceptions import NotFoundError
 
 
 class LiquidacionesService:
-    def __init__(
-        self, repository: LiquidacionesRepository, auth_repository: AuthRepository
-    ) -> None:
+    def __init__(self, repository: LiquidacionesRepository) -> None:
         self.repository = repository
-        self.auth_repository = auth_repository
 
     def listar(
-        self, id_usuario: int | None, periodo: str | None
+        self, periodo: str | None, nombre_empleado: str | None
     ) -> list[LiquidacionEmpleado]:
-        return self.repository.listar(id_usuario, periodo)
+        return self.repository.listar(periodo, nombre_empleado)
 
     def obtener(self, id_liquidacion: int) -> LiquidacionEmpleado:
         liquidacion = self.repository.obtener(id_liquidacion)
@@ -26,11 +22,8 @@ class LiquidacionesService:
     def crear(
         self, datos: LiquidacionEmpleadoCreate, creado_por: int | None
     ) -> LiquidacionEmpleado:
-        empleado = self.auth_repository.obtener_por_id(datos.id_usuario)
-        if empleado is None:
-            raise NotFoundError("Empleado no encontrado")
         liquidacion = LiquidacionEmpleado(
-            id_usuario=datos.id_usuario,
+            nombre_empleado=datos.nombre_empleado,
             periodo=datos.periodo,
             monto=datos.monto,
             concepto=datos.concepto,
@@ -43,6 +36,10 @@ class LiquidacionesService:
         self, id_liquidacion: int, datos: LiquidacionEmpleadoUpdate
     ) -> LiquidacionEmpleado:
         liquidacion = self.obtener(id_liquidacion)
+        if datos.nombre_empleado is not None:
+            liquidacion.nombre_empleado = datos.nombre_empleado
+        if datos.periodo is not None:
+            liquidacion.periodo = datos.periodo
         if datos.monto is not None:
             liquidacion.monto = datos.monto
         if datos.concepto is not None:

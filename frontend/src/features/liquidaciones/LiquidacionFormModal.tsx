@@ -1,16 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { listarUsuarios } from '@/features/usuarios/api'
-import type { Usuario } from '@/features/usuarios/types'
 import { crearLiquidacion, actualizarLiquidacion } from './api'
 import type { Liquidacion } from './types'
-
-function periodoActual(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
 
 function hoyISO(): string {
   const d = new Date()
@@ -18,8 +11,8 @@ function hoyISO(): string {
 }
 
 const liquidacionSchema = z.object({
-  id_usuario: z.number({ error: 'Selecciona un empleado' }).gt(0, { error: 'Selecciona un empleado' }),
-  periodo: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, { error: 'Selecciona un periodo valido' }),
+  nombre_empleado: z.string().min(1, { error: 'Escribe el nombre del empleado' }),
+  periodo: z.string().min(1, { error: 'Describe el periodo que cubre el pago' }),
   monto: z.number({ error: 'Ingresa un monto valido' }).gt(0, { error: 'El monto debe ser mayor a 0' }),
   concepto: z.string().optional(),
   fecha_pago: z.string().min(1, { error: 'Selecciona la fecha de pago' }),
@@ -34,7 +27,6 @@ interface Props {
 }
 
 export function LiquidacionFormModal({ liquidacionExistente, onCerrar, onGuardada }: Props) {
-  const [empleados, setEmpleados] = useState<Usuario[]>([])
   const [errorGeneral, setErrorGeneral] = useState<string | null>(null)
   const esEdicion = liquidacionExistente !== null
 
@@ -45,37 +37,28 @@ export function LiquidacionFormModal({ liquidacionExistente, onCerrar, onGuardad
   } = useForm<LiquidacionForm>({
     resolver: zodResolver(liquidacionSchema),
     defaultValues: {
-      id_usuario: liquidacionExistente?.id_usuario ?? 0,
-      periodo: liquidacionExistente?.periodo ?? periodoActual(),
+      nombre_empleado: liquidacionExistente?.nombre_empleado ?? '',
+      periodo: liquidacionExistente?.periodo ?? '',
       monto: liquidacionExistente?.monto ?? 0,
       concepto: liquidacionExistente?.concepto ?? '',
       fecha_pago: liquidacionExistente?.fecha_pago ?? hoyISO(),
     },
   })
 
-  useEffect(() => {
-    listarUsuarios()
-      .then((datos) => setEmpleados(datos.filter((u) => u.activo)))
-      .catch(() => setEmpleados([]))
-  }, [])
-
   const onSubmit = async (datos: LiquidacionForm) => {
     setErrorGeneral(null)
     try {
+      const payload = {
+        nombre_empleado: datos.nombre_empleado,
+        periodo: datos.periodo,
+        monto: datos.monto,
+        concepto: datos.concepto || null,
+        fecha_pago: datos.fecha_pago,
+      }
       if (liquidacionExistente) {
-        await actualizarLiquidacion(liquidacionExistente.id_liquidacion, {
-          monto: datos.monto,
-          concepto: datos.concepto || null,
-          fecha_pago: datos.fecha_pago,
-        })
+        await actualizarLiquidacion(liquidacionExistente.id_liquidacion, payload)
       } else {
-        await crearLiquidacion({
-          id_usuario: datos.id_usuario,
-          periodo: datos.periodo,
-          monto: datos.monto,
-          concepto: datos.concepto || null,
-          fecha_pago: datos.fecha_pago,
-        })
+        await crearLiquidacion(payload)
       }
       onGuardada()
     } catch {
@@ -97,37 +80,29 @@ export function LiquidacionFormModal({ liquidacionExistente, onCerrar, onGuardad
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div>
-            <label htmlFor="id_usuario" className="mb-1 block text-sm font-medium text-foreground">
+            <label htmlFor="nombre_empleado" className="mb-1 block text-sm font-medium text-foreground">
               Empleado
             </label>
             <Controller
-              name="id_usuario"
+              name="nombre_empleado"
               control={control}
               render={({ field }) => (
-                <select
+                <input
                   {...field}
-                  id="id_usuario"
-                  disabled={esEdicion}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
-                >
-                  <option value={0}>Selecciona un empleado</option>
-                  {empleados.map((empleado) => (
-                    <option key={empleado.id_usuario} value={empleado.id_usuario}>
-                      {empleado.nombre}
-                    </option>
-                  ))}
-                </select>
+                  id="nombre_empleado"
+                  placeholder="Nombre del empleado"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
               )}
             />
-            {errors.id_usuario && (
-              <p className="mt-1 text-sm text-destructive">{errors.id_usuario.message}</p>
+            {errors.nombre_empleado && (
+              <p className="mt-1 text-sm text-destructive">{errors.nombre_empleado.message}</p>
             )}
           </div>
 
           <div>
             <label htmlFor="periodo" className="mb-1 block text-sm font-medium text-foreground">
-              Periodo (mes que cubre el pago)
+              Periodo que cubre el pago
             </label>
             <Controller
               name="periodo"
@@ -136,9 +111,8 @@ export function LiquidacionFormModal({ liquidacionExistente, onCerrar, onGuardad
                 <input
                   {...field}
                   id="periodo"
-                  type="month"
-                  disabled={esEdicion}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+                  placeholder="Ej: Marzo 2026, o 1 al 15 de marzo"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />
               )}
             />

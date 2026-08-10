@@ -20,8 +20,7 @@ router = APIRouter(prefix="/liquidaciones", tags=["liquidaciones"])
 def _response(liquidacion: LiquidacionEmpleado) -> LiquidacionEmpleadoResponse:
     return LiquidacionEmpleadoResponse(
         id_liquidacion=liquidacion.id_liquidacion,
-        id_usuario=liquidacion.id_usuario,
-        nombre_empleado=liquidacion.usuario.nombre,
+        nombre_empleado=liquidacion.nombre_empleado,
         periodo=liquidacion.periodo,
         monto=liquidacion.monto,
         concepto=liquidacion.concepto,
@@ -31,12 +30,12 @@ def _response(liquidacion: LiquidacionEmpleado) -> LiquidacionEmpleadoResponse:
 
 @router.get("", response_model=list[LiquidacionEmpleadoResponse])
 def listar_liquidaciones(
-    id_usuario: int | None = Query(default=None),
     periodo: str | None = Query(default=None),
+    nombre_empleado: str | None = Query(default=None),
     servicio: LiquidacionesService = Depends(get_liquidaciones_service),
     _: UsuarioActual = Depends(requiere_permiso("LIQUIDACIONES", "VER")),
 ):
-    return [_response(l) for l in servicio.listar(id_usuario, periodo)]
+    return [_response(l) for l in servicio.listar(periodo, nombre_empleado)]
 
 
 @router.post("", response_model=LiquidacionEmpleadoResponse, status_code=status.HTTP_201_CREATED)
@@ -46,14 +45,8 @@ def crear_liquidacion(
     actor: UsuarioActual = Depends(requiere_permiso("LIQUIDACIONES", "CREAR")),
     servicio: LiquidacionesService = Depends(get_liquidaciones_service),
 ):
-    try:
-        liquidacion = servicio.crear(datos, creado_por=actor.id_usuario)
-        db.commit()
-    except NotFoundError as exc:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+    liquidacion = servicio.crear(datos, creado_por=actor.id_usuario)
+    db.commit()
     db.refresh(liquidacion)
     return _response(liquidacion)
 

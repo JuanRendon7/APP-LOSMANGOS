@@ -1,7 +1,5 @@
 import { Coins, Pencil, Trash2, Users } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { listarUsuarios } from '@/features/usuarios/api'
-import type { Usuario } from '@/features/usuarios/types'
 import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { IconActionButton } from '@/shared/ui/IconActionButton'
 import { eliminarLiquidacion, listarLiquidaciones } from './api'
@@ -14,36 +12,22 @@ const formatoMoneda = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 0,
 })
 
-function periodoActual(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
-function formatoPeriodo(periodo: string): string {
-  const [anio] = periodo.split('-')
-  const nombre = new Date(`${periodo}-01T00:00:00`).toLocaleDateString('es-CO', {
-    month: 'long',
-  })
-  return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${anio}`
-}
-
 export function LiquidacionesPage() {
   const [liquidaciones, setLiquidaciones] = useState<Liquidacion[]>([])
-  const [empleados, setEmpleados] = useState<Usuario[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editando, setEditando] = useState<Liquidacion | null>(null)
   const [mostrarForm, setMostrarForm] = useState(false)
   const [borrando, setBorrando] = useState<Liquidacion | null>(null)
   const [eliminando, setEliminando] = useState(false)
-  const [filtroPeriodo, setFiltroPeriodo] = useState(periodoActual())
-  const [filtroEmpleado, setFiltroEmpleado] = useState<number | ''>('')
+  const [filtroPeriodo, setFiltroPeriodo] = useState('')
+  const [filtroNombre, setFiltroNombre] = useState('')
 
   const recargar = useCallback(async () => {
     try {
       const datos = await listarLiquidaciones({
         periodo: filtroPeriodo || undefined,
-        idUsuario: filtroEmpleado || undefined,
+        nombreEmpleado: filtroNombre || undefined,
       })
       setLiquidaciones(datos)
       setError(null)
@@ -52,17 +36,11 @@ export function LiquidacionesPage() {
     } finally {
       setCargando(false)
     }
-  }, [filtroPeriodo, filtroEmpleado])
+  }, [filtroPeriodo, filtroNombre])
 
   useEffect(() => {
     recargar()
   }, [recargar])
-
-  useEffect(() => {
-    listarUsuarios()
-      .then(setEmpleados)
-      .catch(() => setEmpleados([]))
-  }, [])
 
   const total = useMemo(
     () => liquidaciones.reduce((suma, l) => suma + l.monto, 0),
@@ -95,7 +73,7 @@ export function LiquidacionesPage() {
             Liquidacion de empleados
           </h1>
           <p className="text-sm text-muted-foreground">
-            Registro de lo que le pagas a tu equipo, mes a mes.
+            Registro de lo que le pagas a tu equipo.
           </p>
         </div>
         <button
@@ -118,7 +96,8 @@ export function LiquidacionesPage() {
           </label>
           <input
             id="filtro-periodo"
-            type="month"
+            type="text"
+            placeholder="Buscar por periodo..."
             value={filtroPeriodo}
             onChange={(e) => setFiltroPeriodo(e.target.value)}
             className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
@@ -128,26 +107,24 @@ export function LiquidacionesPage() {
           <label htmlFor="filtro-empleado" className="mb-1 block text-xs font-medium text-muted-foreground">
             Empleado
           </label>
-          <select
+          <input
             id="filtro-empleado"
-            value={filtroEmpleado}
-            onChange={(e) => setFiltroEmpleado(e.target.value ? Number(e.target.value) : '')}
+            type="text"
+            placeholder="Buscar por nombre..."
+            value={filtroNombre}
+            onChange={(e) => setFiltroNombre(e.target.value)}
             className="rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Todos</option>
-            {empleados.map((empleado) => (
-              <option key={empleado.id_usuario} value={empleado.id_usuario}>
-                {empleado.nombre}
-              </option>
-            ))}
-          </select>
+          />
         </div>
-        {filtroPeriodo && (
+        {(filtroPeriodo || filtroNombre) && (
           <button
-            onClick={() => setFiltroPeriodo('')}
+            onClick={() => {
+              setFiltroPeriodo('')
+              setFiltroNombre('')
+            }}
             className="rounded-md border border-border px-3 py-2 text-xs font-medium hover:bg-secondary"
           >
-            Ver todos los periodos
+            Limpiar filtros
           </button>
         )}
       </div>
@@ -157,7 +134,7 @@ export function LiquidacionesPage() {
           <Users size={14} /> {liquidaciones.length} pagos
         </span>
         <span className="flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground">
-          <Coins size={14} /> Total {filtroPeriodo ? formatoPeriodo(filtroPeriodo) : ''} · {formatoMoneda.format(total)}
+          <Coins size={14} /> Total {formatoMoneda.format(total)}
         </span>
       </div>
 
@@ -177,7 +154,7 @@ export function LiquidacionesPage() {
             {liquidaciones.map((liquidacion) => (
               <tr key={liquidacion.id_liquidacion} className="border-t border-border hover:bg-secondary/40">
                 <td className="px-3 py-2 text-foreground">{liquidacion.nombre_empleado}</td>
-                <td className="px-3 py-2 text-muted-foreground">{formatoPeriodo(liquidacion.periodo)}</td>
+                <td className="px-3 py-2 text-muted-foreground">{liquidacion.periodo}</td>
                 <td className="px-3 py-2 text-muted-foreground">{liquidacion.concepto ?? '—'}</td>
                 <td className="px-3 py-2 text-muted-foreground">{liquidacion.fecha_pago}</td>
                 <td className="px-3 py-2 text-foreground">{formatoMoneda.format(liquidacion.monto)}</td>

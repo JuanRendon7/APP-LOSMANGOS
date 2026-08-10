@@ -32,7 +32,7 @@ export function LiquidacionesPage() {
       setLiquidaciones(datos)
       setError(null)
     } catch {
-      setError('No se pudieron cargar las liquidaciones.')
+      setError('No se pudieron cargar los pagos de nomina.')
     } finally {
       setCargando(false)
     }
@@ -55,14 +55,14 @@ export function LiquidacionesPage() {
       setBorrando(null)
       await recargar()
     } catch {
-      setError('No se pudo eliminar la liquidacion.')
+      setError('No se pudo eliminar la nomina.')
     } finally {
       setEliminando(false)
     }
   }
 
   if (cargando) {
-    return <p className="text-sm text-muted-foreground">Cargando liquidaciones...</p>
+    return <p className="text-sm text-muted-foreground">Cargando nomina...</p>
   }
 
   return (
@@ -70,7 +70,7 @@ export function LiquidacionesPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
-            Liquidacion de empleados
+            Nomina de empleados
           </h1>
           <p className="text-sm text-muted-foreground">
             Registro de lo que le pagas a tu equipo.
@@ -83,7 +83,7 @@ export function LiquidacionesPage() {
           }}
           className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
         >
-          Nueva liquidacion
+          Nueva nomina
         </button>
       </div>
 
@@ -181,7 +181,7 @@ export function LiquidacionesPage() {
             {liquidaciones.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
-                  No hay liquidaciones registradas para este filtro.
+                  No hay pagos de nomina registrados para este filtro.
                 </td>
               </tr>
             )}
@@ -202,7 +202,7 @@ export function LiquidacionesPage() {
 
       {borrando && (
         <ConfirmDialog
-          titulo="Eliminar liquidacion"
+          titulo="Eliminar nomina"
           descripcion={`¿Eliminar el pago de ${formatoMoneda.format(borrando.monto)} a ${borrando.nombre_empleado}? Esta accion no se puede deshacer.`}
           etiquetaConfirmar="Eliminar"
           tono="peligro"

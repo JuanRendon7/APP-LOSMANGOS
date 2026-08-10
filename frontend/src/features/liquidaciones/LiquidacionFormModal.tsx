@@ -62,7 +62,7 @@ export function LiquidacionFormModal({ liquidacionExistente, onCerrar, onGuardad
       }
       onGuardada()
     } catch {
-      setErrorGeneral('No se pudo guardar la liquidacion.')
+      setErrorGeneral('No se pudo guardar la nomina.')
     }
   }
 
@@ -71,7 +71,7 @@ export function LiquidacionFormModal({ liquidacionExistente, onCerrar, onGuardad
       <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="font-serif text-lg font-semibold text-card-foreground">
-            {esEdicion ? 'Editar liquidacion' : 'Nueva liquidacion'}
+            {esEdicion ? 'Editar nomina' : 'Nueva nomina'}
           </h3>
           <button onClick={onCerrar} className="text-xs text-muted-foreground hover:underline">
             Cerrar

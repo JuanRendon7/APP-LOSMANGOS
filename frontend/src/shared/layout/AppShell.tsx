@@ -58,7 +58,7 @@ const GRUPOS: Grupo[] = [
     enlaces: [
       { to: '/reportes', label: 'Reportes', recurso: 'REPORTES', icon: ClipboardList },
       { to: '/usuarios', label: 'Usuarios', recurso: 'USUARIOS', icon: Users },
-      { to: '/liquidaciones', label: 'Liquidacion empleados', recurso: 'LIQUIDACIONES', icon: Banknote },
+      { to: '/liquidaciones', label: 'Nomina empleados', recurso: 'LIQUIDACIONES', icon: Banknote },
     ],
     subgrupo: {
       titulo: 'Maestros',
@@ -100,7 +100,7 @@ const TITULOS_PAGINA: Record<string, string> = {
   '/tarifario': 'Tarifa Hotel',
   '/caja': 'Caja',
   '/usuarios': 'Usuarios',
-  '/liquidaciones': 'Liquidacion empleados',
+  '/liquidaciones': 'Nomina empleados',
   '/configuracion': 'Notificaciones',
   '/habitaciones/catalogo': 'Habitaciones',
 }

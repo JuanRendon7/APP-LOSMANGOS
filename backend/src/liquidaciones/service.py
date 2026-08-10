@@ -16,7 +16,7 @@ class LiquidacionesService:
     def obtener(self, id_liquidacion: int) -> LiquidacionEmpleado:
         liquidacion = self.repository.obtener(id_liquidacion)
         if liquidacion is None:
-            raise NotFoundError("Liquidacion no encontrada")
+            raise NotFoundError("Registro de nomina no encontrado")
         return liquidacion
 
     def crear(

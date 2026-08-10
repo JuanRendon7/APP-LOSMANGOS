@@ -4,6 +4,7 @@ import type { MetodoPago } from '@/features/caja/types'
 import { listarProductosBar, listarProductosRestaurante } from '@/features/productos/api'
 import type { ProductoBar, ProductoRestaurante } from '@/features/productos/types'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { BuscadorProducto } from '@/shared/ui/BuscadorProducto'
 import {
   agregarItem,
   avanzarEstado,
@@ -71,6 +72,14 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
     )
     listarProductosBar().then((datos) => setProductosBar(datos.filter((p) => p.activo)))
   }, [])
+
+  const opcionesProducto = useMemo(
+    () => [
+      ...productosRestaurante.map((producto) => ({ origen: 'RESTAURANTE' as const, producto })),
+      ...productosBar.map((producto) => ({ origen: 'BAR' as const, producto })),
+    ],
+    [productosRestaurante, productosBar],
+  )
 
   const productoSeleccionado = useMemo(() => {
     const [origen, idTexto] = seleccion.split(':')
@@ -195,30 +204,20 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
 
       {puedeEditar && pedido.estado !== 'CERRADO' && (
         <div className="mb-3 space-y-2 rounded-md border border-border p-2">
-          <select
-            value={seleccion}
-            onChange={(e) => {
-              setSeleccion(e.target.value)
+          <BuscadorProducto
+            opciones={opcionesProducto}
+            claveSeleccionada={seleccion}
+            obtenerClave={(o) => `${o.origen}:${o.producto.id_producto}`}
+            obtenerEtiqueta={(o) => o.producto.nombre}
+            obtenerDetalle={(o) =>
+              `${formatoMoneda.format(o.producto.precio_venta)} · ${o.origen === 'BAR' ? 'Bar' : 'Restaurante'}`
+            }
+            onSeleccionar={(o) => {
+              setSeleccion(`${o.origen}:${o.producto.id_producto}`)
               setPrecioManual('')
             }}
-            className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
-          >
-            <option value="">Selecciona un producto</option>
-            <optgroup label="Restaurante">
-              {productosRestaurante.map((producto) => (
-                <option key={`r-${producto.id_producto}`} value={`RESTAURANTE:${producto.id_producto}`}>
-                  {producto.nombre} · {formatoMoneda.format(producto.precio_venta)}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Bar">
-              {productosBar.map((producto) => (
-                <option key={`b-${producto.id_producto}`} value={`BAR:${producto.id_producto}`}>
-                  {producto.nombre} · {formatoMoneda.format(producto.precio_venta)}
-                </option>
-              ))}
-            </optgroup>
-          </select>
+            placeholder="Busca o selecciona un producto (bar o restaurante)"
+          />
           <div className="flex gap-2">
             <input
               type="number"

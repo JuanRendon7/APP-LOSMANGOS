@@ -9,7 +9,6 @@ import type { Usuario } from './types'
 const ETIQUETA_ROL: Record<string, string> = {
   ADMINISTRADOR: 'Administrador',
   EMPLEADO: 'Empleado',
-  COCINA: 'Cocina',
 }
 
 export function UsuariosPage() {
@@ -59,7 +58,7 @@ export function UsuariosPage() {
         <div>
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">Usuarios</h1>
           <p className="text-sm text-muted-foreground">
-            Crea y administra las cuentas del equipo (rol Administrador, Empleado o Cocina).
+            Crea y administra las cuentas del equipo (rol Administrador o Empleado).
           </p>
         </div>
         {puedeCrear && (

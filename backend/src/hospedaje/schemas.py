@@ -24,6 +24,7 @@ class ReservaResponse(BaseModel):
     fecha_checkout_real: datetime | None
     estado: str
     precio_total: int
+    pagada: bool
     origen: str
 
     model_config = {"from_attributes": True}
@@ -64,8 +65,12 @@ class ReservaCreate(BaseModel):
     cedula: str = Field(min_length=1, max_length=30)
     contacto: str = Field(min_length=1, max_length=100)
     placa: str | None = Field(default=None, max_length=20)
+    # Si no se envia, se calcula con la tarifa vigente. Se puede sobreescribir
+    # para negociar un precio distinto (ej. conductores, grupos, convenios).
+    precio_total: int | None = Field(default=None, ge=0)
 
 
 class ReservaUpdate(BaseModel):
     fecha_checkin_prevista: date | None = None
     fecha_checkout_prevista: date | None = None
+    precio_total: int | None = Field(default=None, ge=0)

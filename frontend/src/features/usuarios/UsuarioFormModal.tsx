@@ -12,7 +12,7 @@ const usuarioSchema = z.object({
   celular: z.string().min(1, { error: 'El celular es requerido' }),
   email: z.string().email({ error: 'Ingresa un correo valido' }),
   password: z.union([z.string().min(8, { error: 'Minimo 8 caracteres' }), z.literal('')]),
-  rol: z.enum(['ADMINISTRADOR', 'EMPLEADO', 'COCINA']),
+  rol: z.enum(['ADMINISTRADOR', 'EMPLEADO']),
   activo: z.boolean(),
 })
 
@@ -21,7 +21,6 @@ type UsuarioForm = z.infer<typeof usuarioSchema>
 const ETIQUETA_ROL: Record<CodigoRol, string> = {
   ADMINISTRADOR: 'Administrador (ve todo)',
   EMPLEADO: 'Empleado (acceso restringido)',
-  COCINA: 'Cocina (solo pedidos)',
 }
 
 interface Props {

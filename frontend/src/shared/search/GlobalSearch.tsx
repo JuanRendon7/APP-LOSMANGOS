@@ -186,7 +186,7 @@ export function GlobalSearch() {
         .filter(
           (p) =>
             p.nombre.toLowerCase().includes(texto) ||
-            p.codigo_barras.toLowerCase().includes(texto),
+            (p.codigo_barras?.toLowerCase().includes(texto) ?? false),
         )
         .slice(0, LIMITE_POR_SECCION)
     : []

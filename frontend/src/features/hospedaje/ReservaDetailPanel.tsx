@@ -3,7 +3,7 @@ import { cobrarHabitacion } from '@/features/caja/api'
 import type { MetodoPago } from '@/features/caja/types'
 import { ConsumoPanel } from '@/features/consumo/ConsumoPanel'
 import { useAuth } from '@/shared/auth/AuthContext'
-import { cancelarReserva, checkIn, listarReservas } from './api'
+import { cancelarReserva, checkIn, checkOut, listarReservas } from './api'
 import type { Habitacion, Reserva } from './types'
 
 const METODOS: MetodoPago[] = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'QR']
@@ -80,15 +80,29 @@ export function ReservaDetailPanel({
     }
   }
 
+  const manejarCobrar = async (idReserva: number) => {
+    setError(null)
+    setCobrando(true)
+    try {
+      await cobrarHabitacion(idReserva, metodoPago)
+      await cargarProximas()
+      await onActualizado()
+    } catch {
+      setError('No se pudo cobrar. Verifica que tengas una caja abierta y que no este todo ya cobrado.')
+    } finally {
+      setCobrando(false)
+    }
+  }
+
   const manejarCheckOut = async () => {
     if (!habitacion.reserva_activa) return
     setError(null)
     setCobrando(true)
     try {
-      await cobrarHabitacion(habitacion.reserva_activa.id_reserva, metodoPago)
+      await checkOut(habitacion.reserva_activa.id_reserva)
       await onActualizado()
     } catch {
-      setError('No se pudo cobrar y hacer check-out. Verifica que tengas una caja abierta.')
+      setError('No se pudo hacer check-out.')
     } finally {
       setCobrando(false)
     }
@@ -140,6 +154,15 @@ export function ReservaDetailPanel({
               {habitacion.reserva_activa.fecha_checkin_prevista} →{' '}
               {habitacion.reserva_activa.fecha_checkout_prevista}
             </span>
+            {habitacion.reserva_activa.pagada ? (
+              <span className="inline-flex items-center rounded-full bg-exito-100 px-2 py-0.5 text-[11px] font-medium text-exito-800">
+                Habitacion pagada
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-alerta-100 px-2 py-0.5 text-[11px] font-medium text-alerta-800">
+                Habitacion sin cobrar
+              </span>
+            )}
           </div>
           {puedeEditarReservas && (
             <div className="flex flex-wrap items-center gap-2">
@@ -155,11 +178,18 @@ export function ReservaDetailPanel({
                 ))}
               </select>
               <button
-                onClick={manejarCheckOut}
+                onClick={() => manejarCobrar(habitacion.reserva_activa!.id_reserva)}
                 disabled={cobrando}
                 className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
               >
-                Cobrar y hacer check-out
+                Cobrar
+              </button>
+              <button
+                onClick={manejarCheckOut}
+                disabled={cobrando}
+                className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50"
+              >
+                Hacer check-out
               </button>
             </div>
           )}
@@ -203,6 +233,20 @@ export function ReservaDetailPanel({
             )}
           </div>
 
+          {hayProximas && puedeEditarReservas && (
+            <select
+              value={metodoPago}
+              onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
+              className="rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+            >
+              {METODOS.map((metodo) => (
+                <option key={metodo} value={metodo}>
+                  {ETIQUETA_METODO[metodo]}
+                </option>
+              ))}
+            </select>
+          )}
+
           {hayProximas && (
             <ul className="space-y-1.5">
               {cargandoProximas && <li className="text-xs text-muted-foreground">Cargando...</li>}
@@ -218,9 +262,23 @@ export function ReservaDetailPanel({
                       · {reserva.fecha_checkin_prevista} - {reserva.fecha_checkout_prevista} ·{' '}
                       {formatoMoneda.format(reserva.precio_total)}
                     </span>
+                    {reserva.pagada && (
+                      <span className="ml-1.5 inline-flex items-center rounded-full bg-exito-100 px-1.5 py-0.5 text-[10px] font-medium text-exito-800">
+                        Pagada
+                      </span>
+                    )}
                   </span>
                   {puedeEditarReservas && (
                     <div className="flex shrink-0 gap-2">
+                      {!reserva.pagada && (
+                        <button
+                          onClick={() => manejarCobrar(reserva.id_reserva)}
+                          disabled={cobrando}
+                          className="rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-secondary disabled:opacity-50"
+                        >
+                          Cobrar
+                        </button>
+                      )}
                       <button
                         onClick={() => manejarCheckIn(reserva.id_reserva)}
                         className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"

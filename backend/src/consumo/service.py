@@ -67,6 +67,8 @@ class ConsumoService:
         item = self.repository.obtener(id_consumo)
         if item is None:
             raise NotFoundError("Item de consumo no encontrado")
+        if item.id_venta is not None:
+            raise BusinessRuleError("No se puede quitar un consumo que ya fue cobrado")
         if item.origen == "BAR" and item.id_producto_bar is not None:
             self.productos_service.ajustar_stock_bar(
                 item.id_producto_bar, item.cantidad

@@ -20,6 +20,21 @@ class ConsumoRepository:
         )
         return list(self.db.scalars(stmt))
 
+    def listar_no_facturados(self, id_reserva: int) -> list[ConsumoItem]:
+        stmt = (
+            select(ConsumoItem)
+            .where(
+                ConsumoItem.id_reserva == id_reserva,
+                ConsumoItem.id_venta.is_(None),
+            )
+            .order_by(ConsumoItem.creado_en)
+        )
+        return list(self.db.scalars(stmt))
+
+    def marcar_facturados(self, items: list[ConsumoItem], id_venta: int) -> None:
+        for item in items:
+            item.id_venta = id_venta
+
     def obtener(self, id_consumo: int) -> ConsumoItem | None:
         stmt = (
             select(ConsumoItem)

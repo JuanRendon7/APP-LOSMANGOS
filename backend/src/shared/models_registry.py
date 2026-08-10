@@ -10,6 +10,7 @@ from src.caja import models as caja_models  # noqa: F401
 from src.configuracion import models as configuracion_models  # noqa: F401
 from src.consumo import models as consumo_models  # noqa: F401
 from src.hospedaje import models as hospedaje_models  # noqa: F401
+from src.liquidaciones import models as liquidaciones_models  # noqa: F401
 from src.productos import models as productos_models  # noqa: F401
 from src.restaurante import models as restaurante_models  # noqa: F401
 from src.tarifas import models as tarifas_models  # noqa: F401

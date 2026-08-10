@@ -38,6 +38,7 @@ def _reserva_response(reserva: Reserva) -> ReservaResponse:
         fecha_checkout_real=reserva.fecha_checkout_real,
         estado=reserva.estado,
         precio_total=reserva.precio_total,
+        pagada=reserva.pagada,
         origen=reserva.origen,
     )
 

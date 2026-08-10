@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { cobrarPedido } from '@/features/caja/api'
 import type { MetodoPago } from '@/features/caja/types'
-import { listarProductosRestaurante } from '@/features/productos/api'
-import type { ProductoRestaurante } from '@/features/productos/types'
+import { listarProductosBar, listarProductosRestaurante } from '@/features/productos/api'
+import type { ProductoBar, ProductoRestaurante } from '@/features/productos/types'
 import { useAuth } from '@/shared/auth/AuthContext'
 import {
   agregarItem,
@@ -12,7 +12,7 @@ import {
   eliminarItem,
   enviarACocina,
 } from './api'
-import type { EstadoPedido, Mesa } from './types'
+import type { EstadoPedido, Mesa, OrigenPedidoItem } from './types'
 
 const formatoMoneda = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -51,10 +51,12 @@ interface Props {
 
 export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
   const { tienePermiso } = useAuth()
-  const [productos, setProductos] = useState<ProductoRestaurante[]>([])
-  const [idProducto, setIdProducto] = useState<number | ''>('')
+  const [productosRestaurante, setProductosRestaurante] = useState<ProductoRestaurante[]>([])
+  const [productosBar, setProductosBar] = useState<ProductoBar[]>([])
+  const [seleccion, setSeleccion] = useState('')
   const [cantidad, setCantidad] = useState(1)
   const [nota, setNota] = useState('')
+  const [precioManual, setPrecioManual] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [procesando, setProcesando] = useState(false)
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO')
@@ -65,9 +67,22 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
 
   useEffect(() => {
     listarProductosRestaurante().then((datos) =>
-      setProductos(datos.filter((p) => p.activo)),
+      setProductosRestaurante(datos.filter((p) => p.activo)),
     )
+    listarProductosBar().then((datos) => setProductosBar(datos.filter((p) => p.activo)))
   }, [])
+
+  const productoSeleccionado = useMemo(() => {
+    const [origen, idTexto] = seleccion.split(':')
+    const id = Number(idTexto)
+    if (origen === 'BAR') {
+      return productosBar.find((p) => p.id_producto === id) ?? null
+    }
+    if (origen === 'RESTAURANTE') {
+      return productosRestaurante.find((p) => p.id_producto === id) ?? null
+    }
+    return null
+  }, [seleccion, productosBar, productosRestaurante])
 
   const conManejoDeError = async (accion: () => Promise<unknown>) => {
     setError(null)
@@ -85,16 +100,20 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
   const manejarNuevoPedido = () => conManejoDeError(() => crearPedido(mesa.id_mesa))
 
   const manejarAgregarItem = () => {
-    if (!idProducto || !pedido) return
+    if (!productoSeleccionado || !pedido) return
+    const [origen, idTexto] = seleccion.split(':')
     return conManejoDeError(async () => {
       await agregarItem(pedido.id_pedido, {
-        id_producto: idProducto,
+        origen: origen as OrigenPedidoItem,
+        id_producto: Number(idTexto),
         cantidad,
         nota: nota || undefined,
+        precio_unitario: precioManual ? Number(precioManual) : undefined,
       })
-      setIdProducto('')
+      setSeleccion('')
       setCantidad(1)
       setNota('')
+      setPrecioManual('')
     })
   }
 
@@ -177,16 +196,28 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
       {puedeEditar && pedido.estado !== 'CERRADO' && (
         <div className="mb-3 space-y-2 rounded-md border border-border p-2">
           <select
-            value={idProducto}
-            onChange={(e) => setIdProducto(e.target.value ? Number(e.target.value) : '')}
+            value={seleccion}
+            onChange={(e) => {
+              setSeleccion(e.target.value)
+              setPrecioManual('')
+            }}
             className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
           >
             <option value="">Selecciona un producto</option>
-            {productos.map((producto) => (
-              <option key={producto.id_producto} value={producto.id_producto}>
-                {producto.nombre} · {formatoMoneda.format(producto.precio_venta)}
-              </option>
-            ))}
+            <optgroup label="Restaurante">
+              {productosRestaurante.map((producto) => (
+                <option key={`r-${producto.id_producto}`} value={`RESTAURANTE:${producto.id_producto}`}>
+                  {producto.nombre} · {formatoMoneda.format(producto.precio_venta)}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Bar">
+              {productosBar.map((producto) => (
+                <option key={`b-${producto.id_producto}`} value={`BAR:${producto.id_producto}`}>
+                  {producto.nombre} · {formatoMoneda.format(producto.precio_venta)}
+                </option>
+              ))}
+            </optgroup>
           </select>
           <div className="flex gap-2">
             <input
@@ -195,6 +226,19 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
               value={cantidad}
               onChange={(e) => setCantidad(Number(e.target.value) || 1)}
               className="w-20 rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+            />
+            <input
+              type="number"
+              min={0}
+              step={500}
+              placeholder={
+                productoSeleccionado
+                  ? `Precio: ${formatoMoneda.format(productoSeleccionado.precio_venta)}`
+                  : 'Precio'
+              }
+              value={precioManual}
+              onChange={(e) => setPrecioManual(e.target.value)}
+              className="w-32 rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
             />
             <input
               type="text"
@@ -206,7 +250,7 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
           </div>
           <button
             onClick={manejarAgregarItem}
-            disabled={!idProducto || procesando}
+            disabled={!seleccion || procesando}
             className="w-full rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
             Agregar producto

@@ -15,6 +15,7 @@ class ConsumoItemResponse(BaseModel):
     nombre_producto: str
     cantidad: int
     precio_unitario: int
+    facturado: bool
 
     model_config = {"from_attributes": True}
 

@@ -1,5 +1,5 @@
 import { apiClient } from '@/shared/api/client'
-import type { EstadoPedido, Mesa, MesaInput, Pedido } from './types'
+import type { EstadoPedido, Mesa, MesaInput, Pedido, PedidoItemInput } from './types'
 
 export async function listarMesas(): Promise<Mesa[]> {
   const { data } = await apiClient.get<Mesa[]>('/mesas')
@@ -41,7 +41,7 @@ export async function crearPedido(idMesa: number): Promise<Pedido> {
 
 export async function agregarItem(
   idPedido: number,
-  datos: { id_producto: number; cantidad: number; nota?: string },
+  datos: PedidoItemInput,
 ): Promise<Pedido> {
   const { data } = await apiClient.post<Pedido>(`/pedidos/${idPedido}/items`, datos)
   return data

@@ -6,7 +6,14 @@ import { ESTILO_TONO } from '@/shared/ui/estado'
 import { IconActionButton } from '@/shared/ui/IconActionButton'
 import { actualizarProductoRestaurante, listarProductosRestaurante } from './api'
 import { ProductoRestauranteFormModal } from './ProductoRestauranteFormModal'
-import type { ProductoRestaurante } from './types'
+import {
+  CATEGORIAS_PRODUCTO_RESTAURANTE,
+  ETIQUETA_CATEGORIA_RESTAURANTE,
+  type CategoriaProductoRestaurante,
+  type ProductoRestaurante,
+} from './types'
+
+type FiltroCategoria = CategoriaProductoRestaurante | 'TODAS'
 
 const formatoMoneda = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -24,6 +31,7 @@ export function ProductosRestaurantePage() {
   const [mostrarForm, setMostrarForm] = useState(false)
   const [busqueda, setBusqueda] = useState(() => searchParams.get('q') ?? '')
   const [soloActivos, setSoloActivos] = useState(false)
+  const [categoriaFiltro, setCategoriaFiltro] = useState<FiltroCategoria>('TODAS')
 
   const puedeGestionar = tienePermiso('PRODUCTOS_RESTAURANTE', 'CREAR')
 
@@ -63,9 +71,10 @@ export function ProductosRestaurantePage() {
     const texto = busqueda.trim().toLowerCase()
     return productos
       .filter((p) => !soloActivos || p.activo)
+      .filter((p) => categoriaFiltro === 'TODAS' || p.categoria === categoriaFiltro)
       .filter((p) => !texto || p.nombre.toLowerCase().includes(texto))
       .sort((a, b) => a.nombre.localeCompare(b.nombre))
-  }, [productos, busqueda, soloActivos])
+  }, [productos, busqueda, soloActivos, categoriaFiltro])
 
   if (cargando) {
     return <p className="text-sm text-muted-foreground">Cargando productos...</p>
@@ -115,6 +124,22 @@ export function ProductosRestaurantePage() {
         </span>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {(['TODAS', ...CATEGORIAS_PRODUCTO_RESTAURANTE] as FiltroCategoria[]).map((categoria) => (
+          <button
+            key={categoria}
+            onClick={() => setCategoriaFiltro(categoria)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              categoriaFiltro === categoria
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border text-muted-foreground hover:bg-secondary'
+            }`}
+          >
+            {categoria === 'TODAS' ? 'Todas' : ETIQUETA_CATEGORIA_RESTAURANTE[categoria]}
+          </button>
+        ))}
+      </div>
+
       <div className="relative max-w-sm">
         <Search
           size={16}
@@ -134,6 +159,7 @@ export function ProductosRestaurantePage() {
           <thead className="bg-mango-700 text-left text-xs uppercase text-mango-50">
             <tr>
               <th className="px-3 py-2">Nombre</th>
+              <th className="px-3 py-2">Categoria</th>
               <th className="px-3 py-2">Precio venta</th>
               <th className="px-3 py-2">Estado</th>
               {puedeGestionar && <th className="px-3 py-2" />}
@@ -151,6 +177,9 @@ export function ProductosRestaurantePage() {
                       {producto.nombre}
                     </span>
                   </div>
+                </td>
+                <td className="px-3 py-2 text-muted-foreground">
+                  {ETIQUETA_CATEGORIA_RESTAURANTE[producto.categoria]}
                 </td>
                 <td className="px-3 py-2 text-foreground">
                   {formatoMoneda.format(producto.precio_venta)}
@@ -191,7 +220,7 @@ export function ProductosRestaurantePage() {
             {visibles.length === 0 && (
               <tr>
                 <td
-                  colSpan={puedeGestionar ? 4 : 3}
+                  colSpan={puedeGestionar ? 5 : 4}
                   className="px-3 py-6 text-center text-muted-foreground"
                 >
                   {productos.length === 0

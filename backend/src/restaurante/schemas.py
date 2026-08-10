@@ -4,14 +4,20 @@ from pydantic import BaseModel, Field
 
 
 class PedidoItemCreate(BaseModel):
+    origen: str = "RESTAURANTE"
     id_producto: int
     cantidad: int = Field(gt=0)
     nota: str | None = Field(default=None, max_length=255)
+    # Si no se envia, se usa el precio del catalogo. Se puede sobreescribir
+    # para negociar el precio de un plato al momento de tomar el pedido.
+    precio_unitario: int | None = Field(default=None, ge=0)
 
 
 class PedidoItemResponse(BaseModel):
     id_item: int
-    id_producto: int
+    origen: str
+    id_producto_bar: int | None
+    id_producto_restaurante: int | None
     nombre_producto: str
     cantidad: int
     precio_unitario: int

@@ -25,6 +25,7 @@ def _item_response(item: ConsumoItem) -> ConsumoItemResponse:
         nombre_producto=item.nombre_producto,
         cantidad=item.cantidad,
         precio_unitario=item.precio_unitario,
+        facturado=item.id_venta is not None,
     )
 
 

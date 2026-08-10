@@ -27,6 +27,11 @@ class ConsumoItem(Base, TimestampMixin):
     creado_por: Mapped[int | None] = mapped_column(
         ForeignKey("hotel.usuario.id_usuario"), default=None
     )
+    # Se llena cuando el consumo ya se incluyo en un cobro; hasta entonces
+    # queda pendiente por facturar.
+    id_venta: Mapped[int | None] = mapped_column(
+        ForeignKey("hotel.venta.id_venta"), default=None
+    )
 
     producto_bar: Mapped[ProductoBar | None] = relationship()
     producto_restaurante: Mapped[ProductoRestaurante | None] = relationship()

@@ -1,41 +1,22 @@
-import { Navigate, Route, Routes } from 'react-router'
+import { Route, Routes } from 'react-router'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { CajaPage } from '@/features/caja/CajaPage'
 import { VenderPage } from '@/features/caja/VenderPage'
 import { ConfiguracionPage } from '@/features/configuracion/ConfiguracionPage'
 import { HabitacionesCatalogoPage } from '@/features/hospedaje/HabitacionesCatalogoPage'
 import { HabitacionesPage } from '@/features/hospedaje/HabitacionesPage'
+import { LiquidacionesPage } from '@/features/liquidaciones/LiquidacionesPage'
 import { ProductosBarPage } from '@/features/productos/ProductosBarPage'
 import { ProductosRestaurantePage } from '@/features/productos/ProductosRestaurantePage'
 import { ReportesPage } from '@/features/reportes/ReportesPage'
-import { CocinaPage } from '@/features/restaurante/CocinaPage'
 import { ComandaPage } from '@/features/restaurante/ComandaPage'
 import { MapaMesasPage } from '@/features/restaurante/MapaMesasPage'
 import { TarifarioPage } from '@/features/tarifas/TarifarioPage'
 import { UsuariosPage } from '@/features/usuarios/UsuariosPage'
-import { AuthProvider, useAuth } from '@/shared/auth/AuthContext'
+import { AuthProvider } from '@/shared/auth/AuthContext'
 import { RequierePermiso, RequiereSesion } from '@/shared/auth/guards'
 import { AppShell } from '@/shared/layout/AppShell'
 import { TooltipProvider } from '@/shared/ui/Tooltip'
-
-// La raiz normalmente es Vender (VENTAS:VER, admin/empleado). Un rol que no
-// venda pero si vea pedidos (ej. Cocina) no tiene VENTAS:VER -- en vez de
-// caer en "sin permiso" cada vez que inicia sesion, lo manda directo a su
-// pantalla (Cocina). Se resuelve aqui (al renderizar la ruta), no en el
-// handler de login, para no leer tienePermiso con datos vencidos justo
-// despues de autenticar.
-function InicioRoute() {
-  const { tienePermiso, cargando } = useAuth()
-  if (cargando) return null
-  if (!tienePermiso('VENTAS', 'VER') && tienePermiso('PEDIDOS', 'VER')) {
-    return <Navigate to="/cocina" replace />
-  }
-  return (
-    <RequierePermiso recurso="VENTAS" accion="VER">
-      <VenderPage />
-    </RequierePermiso>
-  )
-}
 
 export default function App() {
   return (
@@ -48,18 +29,8 @@ export default function App() {
             element={
               <RequiereSesion>
                 <AppShell>
-                  <InicioRoute />
-                </AppShell>
-              </RequiereSesion>
-            }
-          />
-          <Route
-            path="/cocina"
-            element={
-              <RequiereSesion>
-                <AppShell>
-                  <RequierePermiso recurso="PEDIDOS" accion="VER">
-                    <CocinaPage />
+                  <RequierePermiso recurso="VENTAS" accion="VER">
+                    <VenderPage />
                   </RequierePermiso>
                 </AppShell>
               </RequiereSesion>
@@ -168,6 +139,18 @@ export default function App() {
                 <AppShell>
                   <RequierePermiso recurso="USUARIOS" accion="VER">
                     <UsuariosPage />
+                  </RequierePermiso>
+                </AppShell>
+              </RequiereSesion>
+            }
+          />
+          <Route
+            path="/liquidaciones"
+            element={
+              <RequiereSesion>
+                <AppShell>
+                  <RequierePermiso recurso="LIQUIDACIONES" accion="VER">
+                    <LiquidacionesPage />
                   </RequierePermiso>
                 </AppShell>
               </RequiereSesion>

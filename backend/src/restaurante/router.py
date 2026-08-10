@@ -22,8 +22,10 @@ from src.shared.exceptions import BusinessRuleError, NotFoundError
 def _item_response(item: PedidoItem) -> PedidoItemResponse:
     return PedidoItemResponse(
         id_item=item.id_item,
-        id_producto=item.id_producto,
-        nombre_producto=item.producto.nombre,
+        origen=item.origen,
+        id_producto_bar=item.id_producto_bar,
+        id_producto_restaurante=item.id_producto_restaurante,
+        nombre_producto=item.nombre_producto,
         cantidad=item.cantidad,
         precio_unitario=item.precio_unitario,
         nota=item.nota,

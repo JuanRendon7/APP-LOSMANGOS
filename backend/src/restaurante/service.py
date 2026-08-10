@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from src.productos.repository import ProductosRepository
+from src.productos.service import ProductosService
 from src.restaurante.models import Mesa, Pedido, PedidoItem
 from src.restaurante.repository import RestauranteRepository
 from src.restaurante.schemas import MesaCreate, MesaUpdate, PedidoItemCreate
@@ -17,10 +17,10 @@ class RestauranteService:
     def __init__(
         self,
         repository: RestauranteRepository,
-        productos_repository: ProductosRepository,
+        productos_service: ProductosService,
     ) -> None:
         self.repository = repository
-        self.productos_repository = productos_repository
+        self.productos_service = productos_service
 
     # Mesas
 
@@ -84,16 +84,39 @@ class RestauranteService:
         pedido = self.obtener_pedido(id_pedido)
         if pedido.estado == "CERRADO":
             raise BusinessRuleError("El pedido esta cerrado")
-        producto = self.productos_repository.obtener_restaurante(datos.id_producto)
-        if producto is None or not producto.activo:
-            raise BusinessRuleError("El producto no existe o no esta activo")
-        item = PedidoItem(
-            id_pedido=id_pedido,
-            id_producto=datos.id_producto,
-            cantidad=datos.cantidad,
-            precio_unitario=producto.precio_venta,
-            nota=datos.nota,
-        )
+
+        if datos.origen == "BAR":
+            producto = self.productos_service.obtener_bar(datos.id_producto)
+            if not producto.activo:
+                raise BusinessRuleError("El producto no esta activo")
+            self.productos_service.ajustar_stock_bar(datos.id_producto, -datos.cantidad)
+            item = PedidoItem(
+                id_pedido=id_pedido,
+                origen="BAR",
+                id_producto_bar=datos.id_producto,
+                cantidad=datos.cantidad,
+                precio_unitario=datos.precio_unitario
+                if datos.precio_unitario is not None
+                else producto.precio_venta,
+                nota=datos.nota,
+            )
+        elif datos.origen == "RESTAURANTE":
+            producto = self.productos_service.obtener_restaurante(datos.id_producto)
+            if not producto.activo:
+                raise BusinessRuleError("El producto no esta activo")
+            item = PedidoItem(
+                id_pedido=id_pedido,
+                origen="RESTAURANTE",
+                id_producto_restaurante=datos.id_producto,
+                cantidad=datos.cantidad,
+                precio_unitario=datos.precio_unitario
+                if datos.precio_unitario is not None
+                else producto.precio_venta,
+                nota=datos.nota,
+            )
+        else:
+            raise BusinessRuleError(f"Origen '{datos.origen}' invalido")
+
         self.repository.agregar_item(item)
         return self.obtener_pedido(id_pedido)
 
@@ -104,6 +127,8 @@ class RestauranteService:
         item = self.repository.obtener_item(id_pedido, id_item)
         if item is None:
             raise NotFoundError("Item no encontrado")
+        if item.origen == "BAR" and item.id_producto_bar is not None:
+            self.productos_service.ajustar_stock_bar(item.id_producto_bar, item.cantidad)
         self.repository.eliminar_item(item)
         return self.obtener_pedido(id_pedido)
 

@@ -20,6 +20,7 @@ export interface Reserva {
   fecha_checkout_real: string | null
   estado: EstadoReserva
   precio_total: number
+  pagada: boolean
   origen: string
 }
 
@@ -46,4 +47,5 @@ export interface ReservaCreateInput {
   cedula: string
   contacto: string
   placa?: string | null
+  precio_total?: number
 }

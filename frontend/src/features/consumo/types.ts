@@ -14,6 +14,7 @@ export interface ConsumoItem {
   nombre_producto: string
   cantidad: number
   precio_unitario: number
+  facturado: boolean
 }
 
 export interface ConsumoResumen {

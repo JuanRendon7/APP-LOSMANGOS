@@ -7,13 +7,25 @@ export type EstadoPedido =
   | 'ENTREGADO'
   | 'CERRADO'
 
+export type OrigenPedidoItem = 'BAR' | 'RESTAURANTE'
+
 export interface PedidoItem {
   id_item: number
-  id_producto: number
+  origen: OrigenPedidoItem
+  id_producto_bar: number | null
+  id_producto_restaurante: number | null
   nombre_producto: string
   cantidad: number
   precio_unitario: number
   nota: string | null
+}
+
+export interface PedidoItemInput {
+  origen: OrigenPedidoItem
+  id_producto: number
+  cantidad: number
+  nota?: string
+  precio_unitario?: number
 }
 
 export interface Pedido {

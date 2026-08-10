@@ -1,8 +1,8 @@
 import {
+  Banknote,
   BedDouble,
   Beer,
   Bell,
-  ChefHat,
   ChevronRight,
   ClipboardList,
   LayoutGrid,
@@ -50,7 +50,6 @@ const GRUPOS: Grupo[] = [
       { to: '/', label: 'Vender', recurso: 'VENTAS', icon: ShoppingCart },
       { to: '/habitaciones', label: 'Habitaciones', recurso: 'HABITACIONES', icon: BedDouble },
       { to: '/restaurante/mesas', label: 'Mesas', recurso: 'MESAS', icon: LayoutGrid },
-      { to: '/cocina', label: 'Cocina', recurso: 'PEDIDOS', icon: ChefHat },
       { to: '/caja', label: 'Caja', recurso: 'CAJA', icon: Wallet },
     ],
   },
@@ -59,6 +58,7 @@ const GRUPOS: Grupo[] = [
     enlaces: [
       { to: '/reportes', label: 'Reportes', recurso: 'REPORTES', icon: ClipboardList },
       { to: '/usuarios', label: 'Usuarios', recurso: 'USUARIOS', icon: Users },
+      { to: '/liquidaciones', label: 'Liquidacion empleados', recurso: 'LIQUIDACIONES', icon: Banknote },
     ],
     subgrupo: {
       titulo: 'Maestros',
@@ -95,12 +95,12 @@ const TITULOS_PAGINA: Record<string, string> = {
   '/habitaciones': 'Habitaciones',
   '/reportes': 'Reportes',
   '/restaurante/mesas': 'Mesas',
-  '/cocina': 'Cocina',
   '/productos/restaurante': 'Productos restaurante',
   '/productos/bar': 'Productos Bar',
   '/tarifario': 'Tarifa Hotel',
   '/caja': 'Caja',
   '/usuarios': 'Usuarios',
+  '/liquidaciones': 'Liquidacion empleados',
   '/configuracion': 'Notificaciones',
   '/habitaciones/catalogo': 'Habitaciones',
 }

@@ -44,6 +44,14 @@ const formatoMoneda = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 0,
 })
 
+const formatoHora = new Intl.DateTimeFormat('es-CO', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'America/Bogota',
+})
+
 function tiempoTranscurrido(iso: string): string {
   const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
   const horas = Math.floor(mins / 60)
@@ -467,7 +475,12 @@ function GastosCard({
               </div>
             ) : (
               <>
-                <span>{gasto.concepto}</span>
+                <span>
+                  {gasto.concepto}
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    {formatoHora.format(new Date(gasto.creado_en))}
+                  </span>
+                </span>
                 <span className="flex shrink-0 items-center gap-2">
                   {formatoMoneda.format(gasto.monto)}
                   {puedeEditar && (

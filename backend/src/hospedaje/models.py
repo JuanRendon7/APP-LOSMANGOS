@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, text
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -54,6 +54,7 @@ class Reserva(Base, TimestampMixin):
         server_default="RESERVADA",
     )
     precio_total: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    pagada: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     origen: Mapped[str] = mapped_column(String(20), server_default=text("'DIRECTO'"))
     referencia_externa: Mapped[str | None] = mapped_column(String(255), default=None)
     creado_por: Mapped[int | None] = mapped_column(

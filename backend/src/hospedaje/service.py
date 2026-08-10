@@ -138,8 +138,12 @@ class HospedajeService:
             raise ConflictError(
                 "La habitacion ya tiene una reserva en ese rango de fechas"
             )
-        precio_total = self.tarifas_service.calcular_precio_total(
-            datos.fecha_checkin_prevista, datos.fecha_checkout_prevista
+        precio_total = (
+            datos.precio_total
+            if datos.precio_total is not None
+            else self.tarifas_service.calcular_precio_total(
+                datos.fecha_checkin_prevista, datos.fecha_checkout_prevista
+            )
         )
         huesped = self._resolver_huesped(
             datos.nombre, datos.cedula, datos.contacto, datos.placa
@@ -170,8 +174,10 @@ class HospedajeService:
             raise ConflictError(
                 "La habitacion ya tiene una reserva en ese rango de fechas"
             )
-        reserva.precio_total = self.tarifas_service.calcular_precio_total(
-            checkin, checkout
+        reserva.precio_total = (
+            datos.precio_total
+            if datos.precio_total is not None
+            else self.tarifas_service.calcular_precio_total(checkin, checkout)
         )
         reserva.fecha_checkin_prevista = checkin
         reserva.fecha_checkout_prevista = checkout

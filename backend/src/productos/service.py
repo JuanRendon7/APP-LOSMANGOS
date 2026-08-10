@@ -28,7 +28,9 @@ class ProductosService:
         self, datos: ProductoRestauranteCreate
     ) -> ProductoRestaurante:
         producto = ProductoRestaurante(
-            nombre=datos.nombre, precio_venta=datos.precio_venta
+            nombre=datos.nombre,
+            categoria=datos.categoria,
+            precio_venta=datos.precio_venta,
         )
         return self.repository.crear_restaurante(producto)
 
@@ -38,6 +40,8 @@ class ProductosService:
         producto = self.obtener_restaurante(id_producto)
         if datos.nombre is not None:
             producto.nombre = datos.nombre
+        if datos.categoria is not None:
+            producto.categoria = datos.categoria
         if datos.precio_venta is not None:
             producto.precio_venta = datos.precio_venta
         if datos.activo is not None:
@@ -56,8 +60,10 @@ class ProductosService:
         return producto
 
     def _validar_codigo_libre(
-        self, codigo_barras: str, excluir_id: int | None = None
+        self, codigo_barras: str | None, excluir_id: int | None = None
     ) -> None:
+        if codigo_barras is None:
+            return
         existente = self.repository.obtener_bar_por_codigo(codigo_barras)
         if existente is not None and existente.id_producto != excluir_id:
             raise ConflictError("Ya existe un producto con ese codigo de barras")

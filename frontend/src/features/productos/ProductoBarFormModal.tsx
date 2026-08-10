@@ -7,7 +7,7 @@ import type { ProductoBar } from './types'
 
 const productoSchema = z.object({
   nombre: z.string().min(1, { error: 'El nombre es requerido' }),
-  codigo_barras: z.string().min(1, { error: 'El codigo de barras es requerido' }),
+  codigo_barras: z.string(),
   precio_costo: z
     .number({ error: 'Ingresa un costo valido' })
     .min(0, { error: 'El costo no puede ser negativo' }),
@@ -97,12 +97,16 @@ export function ProductoBarFormModal({ productoExistente, onCerrar, onGuardado }
 
   const onSubmit = async (datos: ProductoForm) => {
     setErrorGeneral(null)
+    const codigoBarras = datos.codigo_barras.trim() || undefined
     try {
       if (productoExistente) {
         const { stock: _stock, ...sinStock } = datos
-        await actualizarProductoBar(productoExistente.id_producto, sinStock)
+        await actualizarProductoBar(productoExistente.id_producto, {
+          ...sinStock,
+          codigo_barras: codigoBarras,
+        })
       } else {
-        await crearProductoBar(datos)
+        await crearProductoBar({ ...datos, codigo_barras: codigoBarras })
       }
       onGuardado()
     } catch {
@@ -150,7 +154,7 @@ export function ProductoBarFormModal({ productoExistente, onCerrar, onGuardado }
               htmlFor="codigo_barras"
               className="mb-1 block text-sm font-medium text-foreground"
             >
-              Codigo de barras
+              Codigo de barras <span className="font-normal text-muted-foreground">(opcional)</span>
             </label>
             <Controller
               name="codigo_barras"

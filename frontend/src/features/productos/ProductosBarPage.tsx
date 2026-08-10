@@ -77,7 +77,7 @@ export function ProductosBarPage() {
         (p) =>
           !texto ||
           p.nombre.toLowerCase().includes(texto) ||
-          p.codigo_barras.toLowerCase().includes(texto),
+          (p.codigo_barras?.toLowerCase().includes(texto) ?? false),
       )
       .sort((a, b) => a.nombre.localeCompare(b.nombre))
   }, [productos, busqueda, soloActivos])
@@ -207,7 +207,7 @@ export function ProductosBarPage() {
                   </div>
                 </td>
                 <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                  {producto.codigo_barras}
+                  {producto.codigo_barras ?? '—'}
                 </td>
                 <td className="px-3 py-2 text-foreground">
                   {formatoMoneda.format(producto.precio_venta)}

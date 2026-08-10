@@ -120,18 +120,26 @@ class CajaService:
     ) -> Venta:
         self._validar_metodo_pago(metodo_pago)
         turno = self._turno_abierto()
-        consumo_items = self.consumo_repository.listar_por_reserva(id_reserva)
-        total_consumo = sum(i.cantidad * i.precio_unitario for i in consumo_items)
-        reserva = self.hospedaje_service.check_out(id_reserva)
+        reserva = self.hospedaje_service.obtener_reserva(id_reserva)
+        if reserva.estado == "CANCELADA":
+            raise BusinessRuleError("La reserva esta cancelada")
+        consumo_pendiente = self.consumo_repository.listar_no_facturados(id_reserva)
+        total_consumo = sum(i.cantidad * i.precio_unitario for i in consumo_pendiente)
+        monto_habitacion = 0 if reserva.pagada else reserva.precio_total
+        if monto_habitacion == 0 and total_consumo == 0:
+            raise BusinessRuleError("No hay nada pendiente por cobrar en esta reserva")
         venta = Venta(
             id_turno_caja=turno.id_turno,
             origen="HABITACION",
             id_reserva=id_reserva,
             metodo_pago=metodo_pago,
-            monto=reserva.precio_total + total_consumo,
+            monto=monto_habitacion + total_consumo,
             creado_por=id_usuario,
         )
-        return self.repository.crear_venta(venta)
+        venta = self.repository.crear_venta(venta)
+        reserva.pagada = True
+        self.consumo_repository.marcar_facturados(consumo_pendiente, venta.id_venta)
+        return venta
 
     def cobrar_pedido(self, id_usuario: int, id_pedido: int, metodo_pago: str) -> Venta:
         self._validar_metodo_pago(metodo_pago)

@@ -206,6 +206,14 @@ export function MapaMesasPage() {
 
   const seleccionada = mesas.find((m) => m.id_mesa === idSeleccionada) ?? null
 
+  // El panel de pedido aparece arriba de todo -- si la mesa se selecciono
+  // desde el mapa (mas abajo en la pagina), sube el scroll para que se note.
+  useEffect(() => {
+    if (idSeleccionada !== null) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [idSeleccionada])
+
   const moverMesa = (idMesa: number, clientX: number, clientY: number) => {
     const rect = canvasRef.current?.getBoundingClientRect()
     if (!rect) return
@@ -304,6 +312,14 @@ export function MapaMesasPage() {
           Arrastra una mesa para moverla (y luego "Guardar posiciones"), o toca una mesa
           sin arrastrarla para editar su nombre y capacidad.
         </p>
+      )}
+
+      {seleccionada && !modoEdicion && (
+        <PedidoPanel
+          mesa={seleccionada}
+          onCerrar={() => setIdSeleccionada(null)}
+          onActualizado={recargar}
+        />
       )}
 
       {!modoEdicion && (
@@ -414,14 +430,6 @@ export function MapaMesasPage() {
           </p>
         )}
       </div>
-
-      {seleccionada && !modoEdicion && (
-        <PedidoPanel
-          mesa={seleccionada}
-          onCerrar={() => setIdSeleccionada(null)}
-          onActualizado={recargar}
-        />
-      )}
 
       {mostrarFormMesa && (
         <MesaFormModal

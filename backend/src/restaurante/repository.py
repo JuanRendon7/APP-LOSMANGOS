@@ -29,7 +29,8 @@ class RestauranteRepository:
             select(Pedido)
             .where(Pedido.id_mesa.in_(ids_mesa), Pedido.estado != "CERRADO")
             .options(
-                selectinload(Pedido.items).selectinload(PedidoItem.producto)
+                selectinload(Pedido.items).selectinload(PedidoItem.producto_bar),
+                selectinload(Pedido.items).selectinload(PedidoItem.producto_restaurante),
             )
         )
         return {p.id_mesa: p for p in self.db.scalars(stmt)}
@@ -40,7 +41,10 @@ class RestauranteRepository:
         stmt = (
             select(Pedido)
             .where(Pedido.id_pedido == id_pedido)
-            .options(selectinload(Pedido.items).selectinload(PedidoItem.producto))
+            .options(
+                selectinload(Pedido.items).selectinload(PedidoItem.producto_bar),
+                selectinload(Pedido.items).selectinload(PedidoItem.producto_restaurante),
+            )
         )
         return self.db.scalar(stmt)
 
@@ -48,7 +52,8 @@ class RestauranteRepository:
         self, id_mesa: int | None = None, estado: str | None = None
     ) -> list[Pedido]:
         stmt = select(Pedido).options(
-            selectinload(Pedido.items).selectinload(PedidoItem.producto)
+            selectinload(Pedido.items).selectinload(PedidoItem.producto_bar),
+            selectinload(Pedido.items).selectinload(PedidoItem.producto_restaurante),
         )
         if id_mesa is not None:
             stmt = stmt.where(Pedido.id_mesa == id_mesa)

@@ -115,10 +115,15 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
               <span className="text-xs text-muted-foreground">
                 ({ETIQUETA_ORIGEN[item.origen]})
               </span>
+              {item.facturado && (
+                <span className="ml-1.5 inline-flex items-center rounded-full bg-exito-100 px-1.5 py-0.5 text-[10px] font-medium text-exito-800">
+                  Facturado
+                </span>
+              )}
             </span>
             <span className="flex shrink-0 items-center gap-2">
               {formatoMoneda.format(item.cantidad * item.precio_unitario)}
-              {puedeEditar && (
+              {puedeEditar && !item.facturado && (
                 <button
                   onClick={() => manejarEliminar(item.id_consumo)}
                   className="text-xs text-destructive hover:underline"

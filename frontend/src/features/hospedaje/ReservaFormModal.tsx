@@ -13,6 +13,7 @@ const reservaSchema = z
     placa: z.string().optional(),
     fecha_checkin_prevista: z.string().min(1, { error: 'Selecciona la fecha de checkin' }),
     fecha_checkout_prevista: z.string().min(1, { error: 'Selecciona la fecha de checkout' }),
+    precio_total: z.string().optional(),
   })
   .refine((datos) => datos.fecha_checkin_prevista < datos.fecha_checkout_prevista, {
     error: 'El checkout debe ser posterior al checkin',
@@ -83,6 +84,7 @@ export function ReservaFormModal({ habitacion, onCerrar, onCreada }: Props) {
       placa: '',
       fecha_checkin_prevista: '',
       fecha_checkout_prevista: '',
+      precio_total: '',
     },
   })
 
@@ -144,6 +146,7 @@ export function ReservaFormModal({ habitacion, onCerrar, onCreada }: Props) {
         cedula: datos.cedula,
         contacto: datos.contacto,
         placa: datos.placa || null,
+        precio_total: datos.precio_total ? Number(datos.precio_total) : undefined,
       })
       onCreada()
     } catch {
@@ -241,6 +244,35 @@ export function ReservaFormModal({ habitacion, onCerrar, onCreada }: Props) {
               control={control}
               error={errors.fecha_checkout_prevista?.message}
             />
+          </div>
+
+          <div>
+            <label
+              htmlFor="precio_total"
+              className="mb-1 block text-sm font-medium text-foreground"
+            >
+              Precio total (opcional)
+            </label>
+            <Controller
+              name="precio_total"
+              control={control}
+              render={({ field }) => (
+                <input
+                  {...field}
+                  value={field.value ?? ''}
+                  id="precio_total"
+                  type="number"
+                  min={0}
+                  step={1000}
+                  placeholder="Se calcula automatico con la tarifa vigente"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+              )}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Dejalo vacio para usar el precio del tarifario, o escribe uno distinto
+              (ej. tarifa negociada, conductores, grupos).
+            </p>
           </div>
 
           {errorGeneral && <p className="text-sm text-destructive">{errorGeneral}</p>}

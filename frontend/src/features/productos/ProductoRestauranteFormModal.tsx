@@ -3,10 +3,15 @@ import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { actualizarProductoRestaurante, crearProductoRestaurante } from './api'
-import type { ProductoRestaurante } from './types'
+import {
+  CATEGORIAS_PRODUCTO_RESTAURANTE,
+  ETIQUETA_CATEGORIA_RESTAURANTE,
+  type ProductoRestaurante,
+} from './types'
 
 const productoSchema = z.object({
   nombre: z.string().min(1, { error: 'El nombre es requerido' }),
+  categoria: z.enum(['DESAYUNO', 'ALMUERZO', 'CENA', 'ADICIONALES']),
   precio_venta: z
     .number({ error: 'Ingresa un precio valido' })
     .gt(0, { error: 'El precio debe ser mayor a 0' }),
@@ -36,6 +41,7 @@ export function ProductoRestauranteFormModal({
     resolver: zodResolver(productoSchema),
     defaultValues: {
       nombre: productoExistente?.nombre ?? '',
+      categoria: productoExistente?.categoria ?? 'ALMUERZO',
       precio_venta: productoExistente?.precio_venta ?? 0,
       activo: productoExistente?.activo ?? true,
     },
@@ -86,6 +92,29 @@ export function ProductoRestauranteFormModal({
             {errors.nombre && (
               <p className="mt-1 text-sm text-destructive">{errors.nombre.message}</p>
             )}
+          </div>
+
+          <div>
+            <label htmlFor="categoria" className="mb-1 block text-sm font-medium text-foreground">
+              Categoria
+            </label>
+            <Controller
+              name="categoria"
+              control={control}
+              render={({ field }) => (
+                <select
+                  {...field}
+                  id="categoria"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {CATEGORIAS_PRODUCTO_RESTAURANTE.map((categoria) => (
+                    <option key={categoria} value={categoria}>
+                      {ETIQUETA_CATEGORIA_RESTAURANTE[categoria]}
+                    </option>
+                  ))}
+                </select>
+              )}
+            />
           </div>
 
           <div>

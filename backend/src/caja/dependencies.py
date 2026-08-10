@@ -16,12 +16,13 @@ from src.tarifas.service import TarifasService
 
 
 def get_caja_service(db: Session = Depends(get_db)) -> CajaService:
+    productos_service = ProductosService(ProductosRepository(db))
     return CajaService(
         CajaRepository(db),
         ConsumoRepository(db),
         HospedajeService(
             HospedajeRepository(db), TarifasService(TarifasRepository(db))
         ),
-        RestauranteService(RestauranteRepository(db), ProductosRepository(db)),
-        ProductosService(ProductosRepository(db)),
+        RestauranteService(RestauranteRepository(db), productos_service),
+        productos_service,
     )

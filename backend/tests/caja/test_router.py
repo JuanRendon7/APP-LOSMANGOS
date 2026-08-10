@@ -171,7 +171,7 @@ def test_registrar_gasto_sin_turno_abierto_falla(client, usuario_admin):
     assert resp.status_code == 422
 
 
-def test_cobrar_habitacion_hace_checkout_y_suma_consumo(client, usuario_admin):
+def test_cobrar_habitacion_no_hace_checkout_y_suma_consumo(client, usuario_admin):
     headers = auth_headers(token_para(client, usuario_admin.email))
     _abrir_turno(client, headers)
     reserva = _crear_reserva_con_checkin(client, headers, "102", "1200000001")
@@ -198,8 +198,82 @@ def test_cobrar_habitacion_hace_checkout_y_suma_consumo(client, usuario_admin):
     assert datos["origen"] == "HABITACION"
     assert datos["monto"] == reserva["precio_total"] + 2 * 5000
 
+    # Cobrar ya no hace checkout: la habitacion sigue ocupada hasta que el
+    # personal la libere explicitamente.
+    habitacion = _habitacion_por_numero(client, headers, "102")
+    assert habitacion["estado"] == "OCUPADA"
+
+    checkout = client.post(f"/reservas/{reserva['id_reserva']}/check-out", headers=headers)
+    assert checkout.status_code == 200, checkout.text
     habitacion = _habitacion_por_numero(client, headers, "102")
     assert habitacion["estado"] == "LIMPIEZA"
+
+
+def test_cobrar_habitacion_antes_del_checkin(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers)
+    habitacion = _habitacion_por_numero(client, headers, "102")
+    reserva = client.post(
+        "/reservas",
+        headers=headers,
+        json={
+            "id_habitacion": habitacion["id_habitacion"],
+            "fecha_checkin_prevista": "2026-10-01",
+            "fecha_checkout_prevista": "2026-10-03",
+            "nombre": "Cliente Anticipado",
+            "cedula": "1200000099",
+            "contacto": "3000000000",
+        },
+    ).json()
+
+    venta = client.post(
+        "/caja/ventas/habitacion",
+        headers=headers,
+        json={"id_reserva": reserva["id_reserva"], "metodo_pago": "EFECTIVO"},
+    )
+    assert venta.status_code == 201, venta.text
+    assert venta.json()["monto"] == reserva["precio_total"]
+
+
+def test_no_se_puede_cobrar_dos_veces_la_misma_habitacion(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers)
+    reserva = _crear_reserva_con_checkin(client, headers, "103", "1200000002")
+
+    primer_cobro = client.post(
+        "/caja/ventas/habitacion",
+        headers=headers,
+        json={"id_reserva": reserva["id_reserva"], "metodo_pago": "EFECTIVO"},
+    )
+    assert primer_cobro.status_code == 201, primer_cobro.text
+
+    segundo_cobro = client.post(
+        "/caja/ventas/habitacion",
+        headers=headers,
+        json={"id_reserva": reserva["id_reserva"], "metodo_pago": "EFECTIVO"},
+    )
+    assert segundo_cobro.status_code == 422
+
+    producto = _crear_producto_bar(client, headers, "9100002", stock=10)
+    client.post(
+        "/consumo",
+        headers=headers,
+        json={
+            "id_reserva": reserva["id_reserva"],
+            "origen": "BAR",
+            "id_producto": producto["id_producto"],
+            "cantidad": 1,
+        },
+    )
+    # Con consumo nuevo pendiente si se puede volver a cobrar, pero solo el
+    # consumo -- la habitacion ya esta pagada.
+    tercer_cobro = client.post(
+        "/caja/ventas/habitacion",
+        headers=headers,
+        json={"id_reserva": reserva["id_reserva"], "metodo_pago": "EFECTIVO"},
+    )
+    assert tercer_cobro.status_code == 201, tercer_cobro.text
+    assert tercer_cobro.json()["monto"] == 5000
 
 
 def test_cobrar_pedido_lo_cierra_y_libera_la_mesa(client, usuario_admin):

@@ -1,8 +1,13 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field, field_validator
+
+CategoriaProductoRestaurante = Literal["DESAYUNO", "ALMUERZO", "CENA", "ADICIONALES"]
 
 
 class ProductoRestauranteBase(BaseModel):
     nombre: str = Field(min_length=1, max_length=150)
+    categoria: CategoriaProductoRestaurante = "ALMUERZO"
     precio_venta: int = Field(gt=0)
 
 
@@ -12,6 +17,7 @@ class ProductoRestauranteCreate(ProductoRestauranteBase):
 
 class ProductoRestauranteUpdate(BaseModel):
     nombre: str | None = Field(default=None, min_length=1, max_length=150)
+    categoria: CategoriaProductoRestaurante | None = None
     precio_venta: int | None = Field(default=None, gt=0)
     activo: bool | None = None
 
@@ -25,9 +31,14 @@ class ProductoRestauranteResponse(ProductoRestauranteBase):
 
 class ProductoBarBase(BaseModel):
     nombre: str = Field(min_length=1, max_length=150)
-    codigo_barras: str = Field(min_length=1, max_length=50)
+    codigo_barras: str | None = Field(default=None, max_length=50)
     precio_costo: int = Field(ge=0)
     precio_venta: int = Field(gt=0)
+
+    @field_validator("codigo_barras")
+    @classmethod
+    def _vacio_es_nulo(cls, valor: str | None) -> str | None:
+        return valor.strip() or None if valor is not None else None
 
 
 class ProductoBarCreate(ProductoBarBase):
@@ -47,7 +58,7 @@ class ProductoBarUpdate(BaseModel):
 class ProductoBarResponse(BaseModel):
     id_producto: int
     nombre: str
-    codigo_barras: str
+    codigo_barras: str | None
     precio_venta: int
     stock: int
     umbral_stock_bajo: int

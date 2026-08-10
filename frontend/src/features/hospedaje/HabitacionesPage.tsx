@@ -1,8 +1,19 @@
-import { BedDouble, LogIn, LogOut, Sparkles, UserRound, Wrench, type LucideIcon } from 'lucide-react'
+import {
+  BedDouble,
+  Calendar,
+  LayoutGrid,
+  LogIn,
+  LogOut,
+  Sparkles,
+  UserRound,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { ESTILO_TONO } from '@/shared/ui/estado'
 import { actualizarEstadoHabitacion, listarHabitaciones, listarReservas } from './api'
+import { CalendarioReservas } from './CalendarioReservas'
 import { ReservaDetailPanel } from './ReservaDetailPanel'
 import { ReservaFormModal } from './ReservaFormModal'
 import type { EstadoHabitacion, Habitacion, Reserva } from './types'
@@ -87,6 +98,7 @@ export function HabitacionesPage() {
   const [mostrarFormReserva, setMostrarFormReserva] = useState(false)
   const [refreshToken, setRefreshToken] = useState(0)
   const [filtro, setFiltro] = useState<EstadoHabitacion | 'TODAS'>('TODAS')
+  const [vista, setVista] = useState<'PUERTAS' | 'CALENDARIO'>('PUERTAS')
   const [llegadasHoy, setLlegadasHoy] = useState<Reserva[]>([])
   const panelRef = useRef<HTMLDivElement>(null)
 
@@ -166,11 +178,31 @@ export function HabitacionesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">Habitaciones</h1>
-        <p className="text-sm text-muted-foreground">
-          {habitaciones.length} habitaciones en {pisos.length} pisos · {ocupacion}% ocupacion
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">Habitaciones</h1>
+          <p className="text-sm text-muted-foreground">
+            {habitaciones.length} habitaciones en {pisos.length} pisos · {ocupacion}% ocupacion
+          </p>
+        </div>
+        <div className="flex rounded-md border border-border p-0.5">
+          <button
+            onClick={() => setVista('PUERTAS')}
+            className={`flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              vista === 'PUERTAS' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary'
+            }`}
+          >
+            <LayoutGrid size={14} /> Puertas
+          </button>
+          <button
+            onClick={() => setVista('CALENDARIO')}
+            className={`flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors ${
+              vista === 'CALENDARIO' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-secondary'
+            }`}
+          >
+            <Calendar size={14} /> Calendario
+          </button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -188,6 +220,12 @@ export function HabitacionesPage() {
         </div>
       )}
 
+      {vista === 'CALENDARIO' && (
+        <CalendarioReservas habitaciones={habitaciones} onSeleccionar={setIdSeleccionada} />
+      )}
+
+      {vista === 'PUERTAS' && (
+      <>
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setFiltro('TODAS')}
@@ -316,6 +354,8 @@ export function HabitacionesPage() {
           </div>
         )
       })}
+      </>
+      )}
 
       {mostrarFormReserva && seleccionada && (
         <ReservaFormModal

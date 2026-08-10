@@ -40,6 +40,7 @@ RECURSOS_ACCIONES = {
     "ROLES": ["VER", "EDITAR"],
     "BOOKING_SYNC": ["VER", "CREAR", "EDITAR"],
     "CONFIGURACION": ["VER", "EDITAR"],
+    "LIQUIDACIONES": ["VER", "CREAR", "EDITAR", "ELIMINAR"],
 }
 
 EMPLEADO_PERMISOS = {
@@ -53,11 +54,6 @@ EMPLEADO_PERMISOS = {
     "VENTAS": ["VER", "CREAR"],
     "CAJA": ["VER", "CREAR", "CERRAR"],
     "GASTOS": ["VER", "CREAR"],
-    "CONFIGURACION": ["VER"],
-}
-
-COCINA_PERMISOS = {
-    "PEDIDOS": ["VER", "EDITAR"],
     "CONFIGURACION": ["VER"],
 }
 
@@ -119,16 +115,6 @@ def seed() -> None:
             db.add(rol_empleado)
             db.flush()
 
-        rol_cocina = db.query(Rol).filter(Rol.codigo == "COCINA").one_or_none()
-        if rol_cocina is None:
-            rol_cocina = Rol(
-                codigo="COCINA",
-                nombre="Cocina",
-                descripcion="Prepara los pedidos enviados desde las mesas",
-            )
-            db.add(rol_cocina)
-            db.flush()
-
         def asegurar_rol_permiso(id_rol: int, permiso: Permiso) -> None:
             existe = (
                 db.query(RolPermiso)
@@ -148,12 +134,6 @@ def seed() -> None:
             for accion in acciones:
                 asegurar_rol_permiso(
                     rol_empleado.id_rol, permisos_por_clave[(codigo, accion)]
-                )
-
-        for codigo, acciones in COCINA_PERMISOS.items():
-            for accion in acciones:
-                asegurar_rol_permiso(
-                    rol_cocina.id_rol, permisos_por_clave[(codigo, accion)]
                 )
 
         admin = (

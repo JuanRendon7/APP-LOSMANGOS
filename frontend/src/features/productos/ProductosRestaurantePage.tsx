@@ -1,8 +1,9 @@
-import { CircleCheck, CircleSlash, Coins, Search, UtensilsCrossed } from 'lucide-react'
+import { Ban, CircleCheck, CircleSlash, Coins, Pencil, Search, UtensilsCrossed } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { ESTILO_TONO } from '@/shared/ui/estado'
+import { IconActionButton } from '@/shared/ui/IconActionButton'
 import { actualizarProductoRestaurante, listarProductosRestaurante } from './api'
 import { ProductoRestauranteFormModal } from './ProductoRestauranteFormModal'
 import type { ProductoRestaurante } from './types'
@@ -128,62 +129,79 @@ export function ProductosRestaurantePage() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {visibles.map((producto) => (
-          <div
-            key={producto.id_producto}
-            className={`flex flex-col gap-2 rounded-xl border bg-card p-3 shadow-sm ${
-              producto.activo ? 'border-border' : 'border-border opacity-60'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-primary">
-                <UtensilsCrossed size={16} />
-              </div>
-              <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  producto.activo
-                    ? ESTILO_TONO.exito.badge
-                    : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {producto.activo ? 'Activo' : 'Inactivo'}
-              </span>
-            </div>
-            <p className="truncate text-sm font-semibold text-card-foreground" title={producto.nombre}>
-              {producto.nombre}
-            </p>
-            <p className="text-sm font-medium text-foreground">
-              {formatoMoneda.format(producto.precio_venta)}
-            </p>
-            {puedeGestionar && (
-              <div className="mt-1 flex gap-2 border-t border-border pt-2 text-xs font-medium">
-                <button
-                  onClick={() => {
-                    setEditando(producto)
-                    setMostrarForm(true)
-                  }}
-                  className="text-foreground hover:underline"
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead className="bg-mango-700 text-left text-xs uppercase text-mango-50">
+            <tr>
+              <th className="px-3 py-2">Nombre</th>
+              <th className="px-3 py-2">Precio venta</th>
+              <th className="px-3 py-2">Estado</th>
+              {puedeGestionar && <th className="px-3 py-2" />}
+            </tr>
+          </thead>
+          <tbody>
+            {visibles.map((producto) => (
+              <tr key={producto.id_producto} className="border-t border-border hover:bg-secondary/40">
+                <td className="px-3 py-2 text-foreground">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-primary">
+                      <UtensilsCrossed size={14} />
+                    </div>
+                    <span className={producto.activo ? '' : 'text-muted-foreground'}>
+                      {producto.nombre}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-3 py-2 text-foreground">
+                  {formatoMoneda.format(producto.precio_venta)}
+                </td>
+                <td className="px-3 py-2">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      producto.activo
+                        ? ESTILO_TONO.exito.badge
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {producto.activo ? 'Activo' : 'Inactivo'}
+                  </span>
+                </td>
+                {puedeGestionar && (
+                  <td className="px-3 py-2 text-right">
+                    <div className="flex justify-end gap-1">
+                      <IconActionButton
+                        icono={Pencil}
+                        etiqueta="Editar"
+                        onClick={() => {
+                          setEditando(producto)
+                          setMostrarForm(true)
+                        }}
+                      />
+                      <IconActionButton
+                        icono={producto.activo ? Ban : CircleCheck}
+                        etiqueta={producto.activo ? 'Desactivar' : 'Activar'}
+                        tono={producto.activo ? 'peligro' : 'exito'}
+                        onClick={() => manejarToggleActivo(producto)}
+                      />
+                    </div>
+                  </td>
+                )}
+              </tr>
+            ))}
+            {visibles.length === 0 && (
+              <tr>
+                <td
+                  colSpan={puedeGestionar ? 4 : 3}
+                  className="px-3 py-6 text-center text-muted-foreground"
                 >
-                  Editar
-                </button>
-                <button
-                  onClick={() => manejarToggleActivo(producto)}
-                  className="text-muted-foreground hover:underline"
-                >
-                  {producto.activo ? 'Desactivar' : 'Activar'}
-                </button>
-              </div>
+                  {productos.length === 0
+                    ? 'No hay productos creados todavia.'
+                    : 'Ningun producto coincide con la busqueda.'}
+                </td>
+              </tr>
             )}
-          </div>
-        ))}
-        {visibles.length === 0 && (
-          <p className="col-span-full py-6 text-center text-sm text-muted-foreground">
-            {productos.length === 0
-              ? 'No hay productos creados todavia.'
-              : 'Ningun producto coincide con la busqueda.'}
-          </p>
-        )}
+          </tbody>
+        </table>
       </div>
 
       {mostrarForm && (

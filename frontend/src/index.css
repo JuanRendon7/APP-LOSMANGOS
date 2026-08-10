@@ -104,7 +104,10 @@
 
   --color-background: var(--color-marca-50);
   --color-foreground: var(--color-marca-900);
-  --color-primary: var(--color-marca-800);
+  /* Primario = verde mango (mismo tono que el sidebar activo y las cabeceras de
+     tabla, mango-700), no la tinta espresso de marca -- botones/CTAs de toda la
+     app comparten un solo verde de identidad. */
+  --color-primary: var(--color-mango-700);
   --color-primary-foreground: var(--color-marca-50);
   --color-secondary: var(--color-marca-200);
   --color-secondary-foreground: var(--color-marca-900);
@@ -134,7 +137,7 @@
 :root[data-theme="dark"] {
   --color-background: var(--color-marca-950);
   --color-foreground: var(--color-marca-50);
-  --color-primary: var(--color-marca-100);
+  --color-primary: var(--color-mango-400);
   --color-primary-foreground: var(--color-marca-950);
   --color-secondary: var(--color-marca-800);
   --color-secondary-foreground: var(--color-marca-50);

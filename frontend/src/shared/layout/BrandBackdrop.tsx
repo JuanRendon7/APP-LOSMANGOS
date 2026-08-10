@@ -5,6 +5,15 @@ interface Props {
   opacidadVelo?: number
   /** Desenfoque en px. Bajo = la foto (logo en la pared) se reconoce; alto = solo textura. */
   desenfoquePx?: number
+  /**
+   * 'cover' llena la pantalla de lado a lado (recorta arriba/abajo, nunca a los
+   * lados en una pantalla ancha porque la foto es cuadrada -- por eso el logo/texto,
+   * que ocupa todo el ancho de la foto, siempre queda visible de lado a lado).
+   * 'contain' muestra la foto completa, centrada, con margen vacio garantizado a
+   * los lados en pantallas anchas -- util cuando algo (como la tarjeta de login)
+   * necesita un area sin contenido de la foto para no tapar el logo.
+   */
+  ajuste?: 'cover' | 'contain'
 }
 
 /**
@@ -14,23 +23,23 @@ interface Props {
  * pagina. Las tarjetas (`bg-card`) son opacas, asi que el contenido dentro de ellas
  * nunca pierde legibilidad sin importar que tan visible este la foto detras.
  *
- * OJO: no usar `background-size: cover` aqui -- en pantallas anchas eso fuerza a
- * escalar la imagen (nativa 1254px) muy por encima de su tamano real y se ve
- * pixelada/borrosa. En su lugar se limita el tamano a como maximo ~1300px (casi 1:1
- * con el original) y se centra; el velo de color rellena el resto sin costura visible.
+ * Usa un <img> real (no CSS background-image) con `object-fit` parametrizable --
+ * ver `ajuste` arriba.
  */
 export function BrandBackdrop({
   opacidadImagen = 0.4,
   opacidadVelo = 0.5,
   desenfoquePx = 6,
+  ajuste = 'cover',
 }: Props) {
   return (
     <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden bg-marca-50">
-      <div
-        className="absolute inset-0 bg-center bg-no-repeat"
+      <img
+        src="/brand-bg.jpg"
+        alt=""
+        aria-hidden="true"
+        className={`absolute inset-0 h-full w-full object-center ${ajuste === 'contain' ? 'object-contain' : 'object-cover'}`}
         style={{
-          backgroundImage: "url('/brand-bg.jpg')",
-          backgroundSize: 'min(1300px, 105vw)',
           opacity: opacidadImagen,
           filter: `blur(${desenfoquePx}px)`,
         }}

@@ -1,8 +1,9 @@
-import { Beer, CircleCheck, Coins, PackageX, Search, TriangleAlert } from 'lucide-react'
+import { Ban, Beer, Boxes, CircleCheck, Coins, PackageX, Pencil, Search, TriangleAlert } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { ESTILO_TONO } from '@/shared/ui/estado'
+import { IconActionButton } from '@/shared/ui/IconActionButton'
 import { AjustarStockModal } from './AjustarStockModal'
 import { actualizarProductoBar, listarProductosBar } from './api'
 import { ProductoBarFormModal } from './ProductoBarFormModal'
@@ -180,7 +181,7 @@ export function ProductosBarPage() {
 
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
-          <thead className="bg-secondary text-left text-xs uppercase text-muted-foreground">
+          <thead className="bg-mango-700 text-left text-xs uppercase text-mango-50">
             <tr>
               <th className="px-3 py-2">Nombre</th>
               <th className="px-3 py-2">Codigo</th>
@@ -245,28 +246,26 @@ export function ProductosBarPage() {
                 </td>
                 {puedeGestionar && (
                   <td className="px-3 py-2 text-right">
-                    <div className="flex flex-wrap justify-end gap-x-3 gap-y-1">
-                      <button
+                    <div className="flex justify-end gap-1">
+                      <IconActionButton
+                        icono={Pencil}
+                        etiqueta="Editar"
                         onClick={() => {
                           setEditando(producto)
                           setMostrarForm(true)
                         }}
-                        className="text-xs font-medium text-foreground hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
+                      />
+                      <IconActionButton
+                        icono={Boxes}
+                        etiqueta="Ajustar stock"
                         onClick={() => setAjustandoStock(producto)}
-                        className="text-xs font-medium text-foreground hover:underline"
-                      >
-                        Ajustar stock
-                      </button>
-                      <button
+                      />
+                      <IconActionButton
+                        icono={producto.activo ? Ban : CircleCheck}
+                        etiqueta={producto.activo ? 'Desactivar' : 'Activar'}
+                        tono={producto.activo ? 'peligro' : 'exito'}
                         onClick={() => manejarToggleActivo(producto)}
-                        className="text-xs font-medium text-muted-foreground hover:underline"
-                      >
-                        {producto.activo ? 'Desactivar' : 'Activar'}
-                      </button>
+                      />
                     </div>
                   </td>
                 )}

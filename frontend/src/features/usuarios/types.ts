@@ -1,4 +1,4 @@
-export type CodigoRol = 'ADMINISTRADOR' | 'EMPLEADO'
+export type CodigoRol = 'ADMINISTRADOR' | 'EMPLEADO' | 'COCINA'
 
 export interface Usuario {
   id_usuario: number

@@ -1,8 +1,18 @@
 import { apiClient } from '@/shared/api/client'
-import type { Mesa, MesaInput, Pedido } from './types'
+import type { EstadoPedido, Mesa, MesaInput, Pedido } from './types'
 
 export async function listarMesas(): Promise<Mesa[]> {
   const { data } = await apiClient.get<Mesa[]>('/mesas')
+  return data
+}
+
+export async function listarPedidos(params: {
+  idMesa?: number
+  estado?: EstadoPedido
+}): Promise<Pedido[]> {
+  const { data } = await apiClient.get<Pedido[]>('/pedidos', {
+    params: { id_mesa: params.idMesa, estado: params.estado },
+  })
   return data
 }
 

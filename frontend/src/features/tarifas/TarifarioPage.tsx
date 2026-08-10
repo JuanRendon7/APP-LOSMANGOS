@@ -1,4 +1,7 @@
+import { Pencil, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import { ConfirmDialog } from '@/shared/ui/ConfirmDialog'
+import { IconActionButton } from '@/shared/ui/IconActionButton'
 import { eliminarTemporada, listarTemporadas } from './api'
 import { TemporadaFormModal } from './TemporadaFormModal'
 import type { Temporada } from './types'
@@ -15,6 +18,8 @@ export function TarifarioPage() {
   const [error, setError] = useState<string | null>(null)
   const [editando, setEditando] = useState<Temporada | null>(null)
   const [mostrarForm, setMostrarForm] = useState(false)
+  const [borrando, setBorrando] = useState<Temporada | null>(null)
+  const [eliminando, setEliminando] = useState(false)
 
   const recargar = useCallback(async () => {
     try {
@@ -42,13 +47,17 @@ export function TarifarioPage() {
     setMostrarForm(true)
   }
 
-  const eliminar = async (temporada: Temporada) => {
-    if (!window.confirm(`¿Eliminar la temporada "${temporada.nombre}"?`)) return
+  const confirmarEliminar = async () => {
+    if (!borrando) return
+    setEliminando(true)
     try {
-      await eliminarTemporada(temporada.id_temporada)
+      await eliminarTemporada(borrando.id_temporada)
+      setBorrando(null)
       await recargar()
     } catch {
       setError('No se pudo eliminar la temporada.')
+    } finally {
+      setEliminando(false)
     }
   }
 
@@ -77,7 +86,7 @@ export function TarifarioPage() {
 
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
-          <thead className="bg-secondary text-left text-xs uppercase text-muted-foreground">
+          <thead className="bg-mango-700 text-left text-xs uppercase text-mango-50">
             <tr>
               <th className="px-3 py-2">Nombre</th>
               <th className="px-3 py-2">Desde</th>
@@ -100,18 +109,15 @@ export function TarifarioPage() {
                   {temporada.activa ? 'Si' : 'No'}
                 </td>
                 <td className="px-3 py-2 text-right">
-                  <button
-                    onClick={() => abrirEditar(temporada)}
-                    className="mr-3 text-xs font-medium text-foreground hover:underline"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => eliminar(temporada)}
-                    className="text-xs font-medium text-destructive hover:underline"
-                  >
-                    Eliminar
-                  </button>
+                  <div className="flex justify-end gap-1">
+                    <IconActionButton icono={Pencil} etiqueta="Editar" onClick={() => abrirEditar(temporada)} />
+                    <IconActionButton
+                      icono={Trash2}
+                      etiqueta="Eliminar"
+                      tono="peligro"
+                      onClick={() => setBorrando(temporada)}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -134,6 +140,18 @@ export function TarifarioPage() {
             setMostrarForm(false)
             recargar()
           }}
+        />
+      )}
+
+      {borrando && (
+        <ConfirmDialog
+          titulo="Eliminar temporada"
+          descripcion={`¿Eliminar la temporada "${borrando.nombre}"? Esta accion no se puede deshacer.`}
+          etiquetaConfirmar="Eliminar"
+          tono="peligro"
+          procesando={eliminando}
+          onConfirmar={confirmarEliminar}
+          onCancelar={() => setBorrando(null)}
         />
       )}
     </div>

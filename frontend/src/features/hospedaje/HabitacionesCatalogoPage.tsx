@@ -1,5 +1,7 @@
+import { Pencil } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { IconActionButton } from '@/shared/ui/IconActionButton'
 import { listarHabitaciones } from './api'
 import { HabitacionFormModal } from './HabitacionFormModal'
 import type { Habitacion } from './types'
@@ -76,7 +78,7 @@ export function HabitacionesCatalogoPage() {
 
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
-          <thead className="bg-secondary text-left text-xs uppercase text-muted-foreground">
+          <thead className="bg-mango-700 text-left text-xs uppercase text-mango-50">
             <tr>
               <th className="px-3 py-2">Numero</th>
               <th className="px-3 py-2">Piso</th>
@@ -92,12 +94,7 @@ export function HabitacionesCatalogoPage() {
                 <td className="px-3 py-2 text-muted-foreground">{habitacion.tipo}</td>
                 {puedeEditar && (
                   <td className="px-3 py-2 text-right">
-                    <button
-                      onClick={() => abrirEditar(habitacion)}
-                      className="text-xs font-medium text-foreground hover:underline"
-                    >
-                      Editar
-                    </button>
+                    <IconActionButton icono={Pencil} etiqueta="Editar" onClick={() => abrirEditar(habitacion)} />
                   </td>
                 )}
               </tr>

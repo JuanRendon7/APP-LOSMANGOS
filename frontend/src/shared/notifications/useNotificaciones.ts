@@ -3,6 +3,7 @@ import { listarTurnos } from '@/features/caja/api'
 import { listarConfiguracion } from '@/features/configuracion/api'
 import { listarHabitaciones, listarReservas } from '@/features/hospedaje/api'
 import { listarProductosBar } from '@/features/productos/api'
+import { listarPedidos } from '@/features/restaurante/api'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { reproducirSonido } from './sonidos'
 import type { Notificacion } from './types'
@@ -41,7 +42,7 @@ const ORDEN_NIVEL: Record<Notificacion['nivel'], number> = {
 }
 
 export function useNotificaciones() {
-  const { tienePermiso } = useAuth()
+  const { tienePermiso, tieneRol } = useAuth()
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([])
   const [descartadas, setDescartadas] = useState<Record<string, number>>(() =>
     leerMapa(CLAVE_DESCARTADAS),
@@ -54,6 +55,9 @@ export function useNotificaciones() {
   const veHabitaciones = tienePermiso('HABITACIONES', 'VER')
   const veProductosBar = tienePermiso('PRODUCTOS_BAR', 'VER')
   const veReportes = tienePermiso('REPORTES', 'VER')
+  // Gateado por rol, no por permiso generico: Empleado tambien tiene PEDIDOS:VER
+  // (toma pedidos) pero no deberia recibir la alerta de "pedido nuevo en cocina".
+  const esCocina = tieneRol('COCINA')
 
   useEffect(() => {
     listarConfiguracion()
@@ -132,6 +136,20 @@ export function useNotificaciones() {
         }
       }
 
+      if (esCocina) {
+        const pendientesCocina = await listarPedidos({ estado: 'ENVIADO_COCINA' })
+        for (const p of pendientesCocina) {
+          const resumen = p.items.map((i) => `${i.cantidad}× ${i.nombre_producto}`).join(', ')
+          items.push({
+            id: `cocina-${p.id_pedido}`,
+            nivel: 'warning',
+            titulo: `Nuevo pedido: ${p.nombre_mesa}`,
+            descripcion: resumen || 'Sin detalle de productos',
+            enlace: '/cocina',
+          })
+        }
+      }
+
       if (veReportes) {
         const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000)
         const ayerISO = `${ayer.getFullYear()}-${String(ayer.getMonth() + 1).padStart(2, '0')}-${String(ayer.getDate()).padStart(2, '0')}`
@@ -200,7 +218,7 @@ export function useNotificaciones() {
     }
 
     setNotificaciones(items)
-  }, [veHabitaciones, veProductosBar, veReportes])
+  }, [veHabitaciones, veProductosBar, veReportes, esCocina])
 
   useEffect(() => {
     cargar()

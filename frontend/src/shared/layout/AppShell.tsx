@@ -2,6 +2,7 @@ import {
   BedDouble,
   Beer,
   Bell,
+  ChefHat,
   ChevronRight,
   ClipboardList,
   LayoutGrid,
@@ -49,6 +50,7 @@ const GRUPOS: Grupo[] = [
       { to: '/', label: 'Vender', recurso: 'VENTAS', icon: ShoppingCart },
       { to: '/habitaciones', label: 'Habitaciones', recurso: 'HABITACIONES', icon: BedDouble },
       { to: '/restaurante/mesas', label: 'Mesas', recurso: 'MESAS', icon: LayoutGrid },
+      { to: '/cocina', label: 'Cocina', recurso: 'PEDIDOS', icon: ChefHat },
       { to: '/caja', label: 'Caja', recurso: 'CAJA', icon: Wallet },
     ],
   },
@@ -93,6 +95,7 @@ const TITULOS_PAGINA: Record<string, string> = {
   '/habitaciones': 'Habitaciones',
   '/reportes': 'Reportes',
   '/restaurante/mesas': 'Mesas',
+  '/cocina': 'Cocina',
   '/productos/restaurante': 'Productos restaurante',
   '/productos/bar': 'Productos Bar',
   '/tarifario': 'Tarifa Hotel',
@@ -164,7 +167,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh">
-      <BrandBackdrop />
+      <BrandBackdrop opacidadImagen={0.18} opacidadVelo={0.65} desenfoquePx={0} />
       {abiertoMovil && (
         <button
           type="button"
@@ -186,11 +189,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <MangoIcon size={28} className="shrink-0 text-marca-900" />
             {!colapsado && (
               <div className="min-w-0">
-                <p className="truncate font-serif text-base font-semibold tracking-tight text-marca-900">
+                <p className="truncate font-serif text-xl font-bold tracking-tight text-marca-900">
                   Hotel Los Mangos
                 </p>
-                <p className="truncate text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  Gestión
+                <p className="truncate text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  Gestión Hotel &amp; Restaurante
                 </p>
               </div>
             )}

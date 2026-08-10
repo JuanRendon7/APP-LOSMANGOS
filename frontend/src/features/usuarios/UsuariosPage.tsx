@@ -1,5 +1,7 @@
+import { Ban, CircleCheck, Pencil } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { IconActionButton } from '@/shared/ui/IconActionButton'
 import { actualizarUsuario, listarUsuarios } from './api'
 import { UsuarioFormModal } from './UsuarioFormModal'
 import type { Usuario } from './types'
@@ -7,6 +9,7 @@ import type { Usuario } from './types'
 const ETIQUETA_ROL: Record<string, string> = {
   ADMINISTRADOR: 'Administrador',
   EMPLEADO: 'Empleado',
+  COCINA: 'Cocina',
 }
 
 export function UsuariosPage() {
@@ -56,7 +59,7 @@ export function UsuariosPage() {
         <div>
           <h1 className="font-serif text-2xl font-semibold tracking-tight text-foreground">Usuarios</h1>
           <p className="text-sm text-muted-foreground">
-            Crea y administra las cuentas del equipo (rol Administrador o Empleado).
+            Crea y administra las cuentas del equipo (rol Administrador, Empleado o Cocina).
           </p>
         </div>
         {puedeCrear && (
@@ -76,7 +79,7 @@ export function UsuariosPage() {
 
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
-          <thead className="bg-secondary text-left text-xs uppercase text-muted-foreground">
+          <thead className="bg-mango-700 text-left text-xs uppercase text-mango-50">
             <tr>
               <th className="px-3 py-2">Nombre</th>
               <th className="px-3 py-2">Cedula</th>
@@ -109,22 +112,23 @@ export function UsuariosPage() {
                   </td>
                   {puedeEditar && (
                     <td className="px-3 py-2 text-right">
-                      <button
-                        onClick={() => {
-                          setEditando(u)
-                          setMostrarForm(true)
-                        }}
-                        className="mr-3 text-xs font-medium text-foreground hover:underline"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => manejarToggleActivo(u)}
-                        disabled={esUsuarioActual}
-                        className="text-xs font-medium text-destructive hover:underline disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        {u.activo ? 'Desactivar' : 'Activar'}
-                      </button>
+                      <div className="flex justify-end gap-1">
+                        <IconActionButton
+                          icono={Pencil}
+                          etiqueta="Editar"
+                          onClick={() => {
+                            setEditando(u)
+                            setMostrarForm(true)
+                          }}
+                        />
+                        <IconActionButton
+                          icono={u.activo ? Ban : CircleCheck}
+                          etiqueta={u.activo ? 'Desactivar' : 'Activar'}
+                          tono={u.activo ? 'peligro' : 'exito'}
+                          disabled={esUsuarioActual}
+                          onClick={() => manejarToggleActivo(u)}
+                        />
+                      </div>
                     </td>
                   )}
                 </tr>

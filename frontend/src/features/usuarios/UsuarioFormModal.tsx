@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { PasswordInput } from '@/shared/ui/PasswordInput'
 import { actualizarUsuario, crearUsuario } from './api'
 import type { CodigoRol, Usuario } from './types'
 
@@ -11,7 +12,7 @@ const usuarioSchema = z.object({
   celular: z.string().min(1, { error: 'El celular es requerido' }),
   email: z.string().email({ error: 'Ingresa un correo valido' }),
   password: z.union([z.string().min(8, { error: 'Minimo 8 caracteres' }), z.literal('')]),
-  rol: z.enum(['ADMINISTRADOR', 'EMPLEADO']),
+  rol: z.enum(['ADMINISTRADOR', 'EMPLEADO', 'COCINA']),
   activo: z.boolean(),
 })
 
@@ -20,6 +21,7 @@ type UsuarioForm = z.infer<typeof usuarioSchema>
 const ETIQUETA_ROL: Record<CodigoRol, string> = {
   ADMINISTRADOR: 'Administrador (ve todo)',
   EMPLEADO: 'Empleado (acceso restringido)',
+  COCINA: 'Cocina (solo pedidos)',
 }
 
 interface Props {
@@ -193,13 +195,7 @@ export function UsuarioFormModal({
               name="password"
               control={control}
               render={({ field }) => (
-                <input
-                  {...field}
-                  id="password"
-                  type="password"
-                  autoComplete="new-password"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
-                />
+                <PasswordInput {...field} id="password" autoComplete="new-password" />
               )}
             />
             {errors.password && (

@@ -129,6 +129,42 @@ def test_admin_edita_nombre_y_celular_de_usuario(
     assert resp.json()["celular"] == "3009998877"
 
 
+def test_admin_no_puede_desactivarse_a_si_mismo(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    resp = client.patch(
+        f"/usuarios/{usuario_admin.id_usuario}",
+        headers=auth_headers(token),
+        json={"activo": False},
+    )
+    assert resp.status_code == 422
+    # el token sigue sirviendo, la cuenta no quedo desactivada
+    me = client.get("/auth/me", headers=auth_headers(token))
+    assert me.status_code == 200
+
+
+def test_admin_no_puede_cambiar_su_propio_rol(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    resp = client.patch(
+        f"/usuarios/{usuario_admin.id_usuario}",
+        headers=auth_headers(token),
+        json={"roles": ["EMPLEADO"]},
+    )
+    assert resp.status_code == 422
+    me = client.get("/auth/me", headers=auth_headers(token))
+    assert me.json()["roles"] == ["ADMINISTRADOR"]
+
+
+def test_admin_si_puede_editar_su_propio_nombre(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    resp = client.patch(
+        f"/usuarios/{usuario_admin.id_usuario}",
+        headers=auth_headers(token),
+        json={"nombre": "Nombre Editado"},
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["nombre"] == "Nombre Editado"
+
+
 def test_empleado_no_puede_crear_usuario(client, usuario_empleado):
     token = token_para(client, usuario_empleado.email)
     payload = {

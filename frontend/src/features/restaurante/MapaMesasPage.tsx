@@ -429,7 +429,11 @@ export function MapaMesasPage() {
           onCerrar={() => setMostrarFormMesa(false)}
           onGuardada={() => {
             setMostrarFormMesa(false)
-            recargar()
+            // guardarPosiciones tambien recarga, y primero persiste cualquier
+            // arrastre pendiente -- si solo llamaramos a recargar() aqui, esas
+            // posiciones sin guardar se perderian (todas las mesas "saltan" a
+            // su ultima posicion guardada, que por defecto es el centro).
+            guardarPosiciones()
           }}
         />
       )}

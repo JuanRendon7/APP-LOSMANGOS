@@ -93,9 +93,16 @@ def actualizar_usuario(
     id_usuario: int,
     datos: UsuarioUpdate,
     db: Session = Depends(get_db),
-    _: UsuarioActual = Depends(requiere_rol("ADMINISTRADOR")),
+    actor: UsuarioActual = Depends(requiere_rol("ADMINISTRADOR")),
     servicio: AuthService = Depends(get_auth_service),
 ):
+    if actor.id_usuario == id_usuario and (
+        datos.activo is False or datos.roles is not None
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="No puedes cambiar tu propio rol ni desactivar tu propia cuenta.",
+        )
     try:
         usuario = servicio.actualizar_usuario(id_usuario, datos)
         db.commit()

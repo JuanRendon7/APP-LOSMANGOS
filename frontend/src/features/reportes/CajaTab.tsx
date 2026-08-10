@@ -5,7 +5,7 @@ import { listarTurnos } from '@/features/caja/api'
 import type { EstadoTurno, TurnoCaja } from '@/features/caja/types'
 import { listarUsuarios } from '@/features/usuarios/api'
 import type { Usuario } from '@/features/usuarios/types'
-import { descargarCsv } from '@/shared/lib/csv'
+import { descargarExcel, PALETA_EXCEL } from '@/shared/lib/excel'
 import { Chip, formatoMoneda, StatCard } from './shared'
 
 interface Props {
@@ -86,42 +86,59 @@ export function CajaTab({ desde, hasta }: Props) {
     }
   }, [turnos])
 
-  const descargar = () => {
+  const descargar = async () => {
     if (turnos.length === 0) {
       setError('No hay turnos en ese rango.')
       return
     }
-    const encabezados = [
-      'Apertura',
-      'Cierre',
-      'Cajero',
-      'Estado',
-      'Monto apertura',
-      'Efectivo',
-      'Tarjeta',
-      'Transferencia',
-      'QR',
-      'Gastos',
-      'Esperado efectivo',
-      'Contado',
-      'Diferencia',
-    ]
     const filas = turnos.map((t) => [
       t.creado_en,
-      t.fecha_cierre ?? '',
+      t.fecha_cierre,
       nombrePorUsuario.get(t.id_usuario) ?? `Usuario ${t.id_usuario}`,
-      t.estado,
-      String(t.monto_apertura),
-      String(t.total_efectivo),
-      String(t.total_tarjeta),
-      String(t.total_transferencia),
-      String(t.total_qr),
-      String(t.total_gastos),
-      String(t.monto_esperado_efectivo),
-      t.monto_cierre_real !== null ? String(t.monto_cierre_real) : '',
-      t.diferencia !== null ? String(t.diferencia) : '',
+      t.estado === 'ABIERTO' ? 'Abierto' : 'Cerrado',
+      t.monto_apertura,
+      t.total_efectivo,
+      t.total_tarjeta,
+      t.total_transferencia,
+      t.total_qr,
+      t.total_gastos,
+      t.monto_esperado_efectivo,
+      t.monto_cierre_real,
+      t.diferencia,
     ])
-    descargarCsv(`turnos_caja${desde && hasta ? `_${desde}_a_${hasta}` : ''}.csv`, encabezados, filas)
+    await descargarExcel({
+      nombreArchivo: `turnos_caja${desde && hasta ? `_${desde}_a_${hasta}` : ''}.xlsx`,
+      hoja: 'Turnos de caja',
+      titulo: 'Hotel Los Mangos · Historico de turnos de caja',
+      subtitulo: `Rango: ${desde || 'inicio'} a ${hasta || 'hoy'} · Cajero: ${
+        idUsuario === 'TODOS' ? 'Todos' : (nombrePorUsuario.get(idUsuario) ?? idUsuario)
+      } · Estado: ${estado === 'TODOS' ? 'Todos' : estado}`,
+      columnas: [
+        { titulo: 'Apertura', formato: 'fechahora' },
+        { titulo: 'Cierre', formato: 'fechahora' },
+        { titulo: 'Cajero', ancho: 20 },
+        { titulo: 'Estado', ancho: 12 },
+        { titulo: 'Monto apertura', formato: 'moneda' },
+        { titulo: 'Efectivo', formato: 'moneda', totalizar: true },
+        { titulo: 'Tarjeta', formato: 'moneda', totalizar: true },
+        { titulo: 'Transferencia', formato: 'moneda', totalizar: true },
+        { titulo: 'QR', formato: 'moneda', totalizar: true },
+        { titulo: 'Gastos', formato: 'moneda', totalizar: true },
+        { titulo: 'Esperado efectivo', formato: 'moneda' },
+        { titulo: 'Contado', formato: 'moneda' },
+        {
+          titulo: 'Diferencia',
+          formato: 'moneda',
+          totalizar: true,
+          colorPorValor: (valor) => {
+            const n = Number(valor)
+            if (!Number.isFinite(n) || n === 0) return undefined
+            return n < 0 ? PALETA_EXCEL.negativo : PALETA_EXCEL.positivo
+          },
+        },
+      ],
+      filas,
+    })
   }
 
   if (cargando) {
@@ -250,7 +267,7 @@ export function CajaTab({ desde, hasta }: Props) {
           onClick={descargar}
           className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
         >
-          Descargar Excel (CSV)
+          Descargar Excel
         </button>
       </div>
     </div>

@@ -16,7 +16,7 @@ import {
 import { listarVentas } from '@/features/caja/api'
 import { listarHabitaciones, listarReservas } from '@/features/hospedaje/api'
 import type { EstadoHabitacion, EstadoReserva, Habitacion, Reserva } from '@/features/hospedaje/types'
-import { descargarCsv } from '@/shared/lib/csv'
+import { descargarExcel } from '@/shared/lib/excel'
 import { Chip, formatoMoneda, StatCard } from './shared'
 
 const ETIQUETAS_ESTADO_RESERVA: Record<EstadoReserva, string> = {
@@ -88,18 +88,6 @@ export function HotelTab({ desde, hasta }: Props) {
         return
       }
       const numeroPorHabitacion = new Map(habitaciones.map((h) => [h.id_habitacion, h.numero]))
-      const encabezados = [
-        'Habitacion',
-        'Huesped',
-        'Cedula',
-        'Contacto',
-        'Checkin previsto',
-        'Checkout previsto',
-        'Checkin real',
-        'Checkout real',
-        'Estado',
-        'Total',
-      ]
       const filas = reservas.map((r) => [
         numeroPorHabitacion.get(r.id_habitacion) ?? String(r.id_habitacion),
         r.huesped.nombre,
@@ -107,12 +95,33 @@ export function HotelTab({ desde, hasta }: Props) {
         r.huesped.contacto,
         r.fecha_checkin_prevista,
         r.fecha_checkout_prevista,
-        r.fecha_checkin_real ?? '',
-        r.fecha_checkout_real ?? '',
+        r.fecha_checkin_real,
+        r.fecha_checkout_real,
         ETIQUETAS_ESTADO_RESERVA[r.estado] ?? r.estado,
-        String(r.precio_total),
+        r.precio_total,
       ])
-      descargarCsv(`reservas${desde && hasta ? `_${desde}_a_${hasta}` : ''}.csv`, encabezados, filas)
+      await descargarExcel({
+        nombreArchivo: `reservas${desde && hasta ? `_${desde}_a_${hasta}` : ''}.xlsx`,
+        hoja: 'Reservas',
+        titulo: 'Hotel Los Mangos · Reservas',
+        subtitulo:
+          desde || hasta
+            ? `Rango: ${desde || 'inicio'} a ${hasta || 'hoy'}`
+            : 'Sin rango de fechas: incluye todas las reservas',
+        columnas: [
+          { titulo: 'Habitacion', ancho: 12 },
+          { titulo: 'Huesped', ancho: 24 },
+          { titulo: 'Cedula', ancho: 14 },
+          { titulo: 'Contacto', ancho: 16 },
+          { titulo: 'Checkin previsto', formato: 'fecha' },
+          { titulo: 'Checkout previsto', formato: 'fecha' },
+          { titulo: 'Checkin real', formato: 'fechahora' },
+          { titulo: 'Checkout real', formato: 'fechahora' },
+          { titulo: 'Estado', ancho: 14 },
+          { titulo: 'Total', formato: 'moneda', totalizar: true },
+        ],
+        filas,
+      })
     } finally {
       setGenerando(false)
     }
@@ -319,7 +328,7 @@ export function HotelTab({ desde, hasta }: Props) {
           disabled={generando}
           className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
         >
-          {generando ? 'Generando...' : 'Descargar Excel (CSV)'}
+          {generando ? 'Generando...' : 'Descargar Excel'}
         </button>
       </div>
     </div>

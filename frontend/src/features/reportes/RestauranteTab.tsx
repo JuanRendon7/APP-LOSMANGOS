@@ -4,7 +4,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { listarVentas } from '@/features/caja/api'
 import type { MetodoPago, OrigenVenta, Venta } from '@/features/caja/types'
 import { listarProductosRestaurante } from '@/features/productos/api'
-import { descargarCsv } from '@/shared/lib/csv'
+import { descargarExcel } from '@/shared/lib/excel'
 import { Chip, formatoMoneda, StatCard } from './shared'
 
 const METODOS: MetodoPago[] = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'QR']
@@ -13,6 +13,11 @@ const ETIQUETA_METODO: Record<MetodoPago, string> = {
   TARJETA: 'Tarjeta',
   TRANSFERENCIA: 'Transferencia',
   QR: 'QR',
+}
+
+const ETIQUETA_ORIGEN_VENTA: Record<string, string> = {
+  MESA: 'Mesa',
+  MOSTRADOR: 'Mostrador',
 }
 
 interface Props {
@@ -86,26 +91,38 @@ export function RestauranteTab({ desde, hasta }: Props) {
     }
   }, [ventas])
 
-  const descargar = () => {
+  const descargar = async () => {
     if (itemsRestaurante.length === 0) {
       setError('No hay ventas de restaurante en ese rango.')
       return
     }
-    const encabezados = ['Fecha', 'Origen', 'Producto', 'Cantidad', 'Precio unitario', 'Total', 'Metodo de pago']
     const filas = itemsRestaurante.map((i) => [
       i.venta.creado_en,
-      i.venta.origen,
+      ETIQUETA_ORIGEN_VENTA[i.venta.origen] ?? i.venta.origen,
       i.nombre_producto,
-      String(i.cantidad),
-      String(i.precio_unitario),
-      String(i.cantidad * i.precio_unitario),
+      i.cantidad,
+      i.precio_unitario,
+      i.cantidad * i.precio_unitario,
       ETIQUETA_METODO[i.venta.metodo_pago],
     ])
-    descargarCsv(
-      `ventas_restaurante${desde && hasta ? `_${desde}_a_${hasta}` : ''}.csv`,
-      encabezados,
+    await descargarExcel({
+      nombreArchivo: `ventas_restaurante${desde && hasta ? `_${desde}_a_${hasta}` : ''}.xlsx`,
+      hoja: 'Ventas de restaurante',
+      titulo: 'Hotel Los Mangos · Ventas de restaurante',
+      subtitulo: `Rango: ${desde || 'inicio'} a ${hasta || 'hoy'} · Origen: ${
+        origen === 'TODOS' ? 'Todos' : ETIQUETA_ORIGEN_VENTA[origen]
+      } · Metodo de pago: ${metodoPago === 'TODOS' ? 'Todos' : ETIQUETA_METODO[metodoPago]}`,
+      columnas: [
+        { titulo: 'Fecha', formato: 'fechahora' },
+        { titulo: 'Origen', ancho: 14 },
+        { titulo: 'Producto', ancho: 26 },
+        { titulo: 'Cantidad', formato: 'entero', totalizar: true },
+        { titulo: 'Precio unitario', formato: 'moneda' },
+        { titulo: 'Total', formato: 'moneda', totalizar: true },
+        { titulo: 'Metodo de pago', ancho: 16 },
+      ],
       filas,
-    )
+    })
   }
 
   if (cargando) {
@@ -209,7 +226,7 @@ export function RestauranteTab({ desde, hasta }: Props) {
           onClick={descargar}
           className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
         >
-          Descargar Excel (CSV)
+          Descargar Excel
         </button>
       </div>
     </div>

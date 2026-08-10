@@ -5,7 +5,7 @@ import { listarVentas } from '@/features/caja/api'
 import type { MetodoPago, Venta } from '@/features/caja/types'
 import { listarProductosBar } from '@/features/productos/api'
 import type { ProductoBar } from '@/features/productos/types'
-import { descargarCsv } from '@/shared/lib/csv'
+import { descargarExcel } from '@/shared/lib/excel'
 import { Chip, formatoMoneda, StatCard } from './shared'
 
 const METODOS: MetodoPago[] = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'QR']
@@ -79,21 +79,36 @@ export function BarTab({ desde, hasta }: Props) {
   const stockBajo = productos.filter((p) => p.activo && p.stock <= p.umbral_stock_bajo)
   const valorInventario = productos.reduce((suma, p) => suma + p.stock * (p.precio_costo ?? 0), 0)
 
-  const descargar = () => {
+  const descargar = async () => {
     if (itemsBar.length === 0) {
       setError('No hay ventas de bar en ese rango.')
       return
     }
-    const encabezados = ['Fecha', 'Producto', 'Cantidad', 'Precio unitario', 'Total', 'Metodo de pago']
     const filas = itemsBar.map((i) => [
       i.venta.creado_en,
       i.nombre_producto,
-      String(i.cantidad),
-      String(i.precio_unitario),
-      String(i.cantidad * i.precio_unitario),
+      i.cantidad,
+      i.precio_unitario,
+      i.cantidad * i.precio_unitario,
       ETIQUETA_METODO[i.venta.metodo_pago],
     ])
-    descargarCsv(`ventas_bar${desde && hasta ? `_${desde}_a_${hasta}` : ''}.csv`, encabezados, filas)
+    await descargarExcel({
+      nombreArchivo: `ventas_bar${desde && hasta ? `_${desde}_a_${hasta}` : ''}.xlsx`,
+      hoja: 'Ventas de bar',
+      titulo: 'Hotel Los Mangos · Ventas de bar',
+      subtitulo: `Rango: ${desde || 'inicio'} a ${hasta || 'hoy'} · Metodo de pago: ${
+        metodoPago === 'TODOS' ? 'Todos' : ETIQUETA_METODO[metodoPago]
+      }`,
+      columnas: [
+        { titulo: 'Fecha', formato: 'fechahora' },
+        { titulo: 'Producto', ancho: 26 },
+        { titulo: 'Cantidad', formato: 'entero', totalizar: true },
+        { titulo: 'Precio unitario', formato: 'moneda' },
+        { titulo: 'Total', formato: 'moneda', totalizar: true },
+        { titulo: 'Metodo de pago', ancho: 16 },
+      ],
+      filas,
+    })
   }
 
   if (cargando) {
@@ -198,7 +213,7 @@ export function BarTab({ desde, hasta }: Props) {
           onClick={descargar}
           className="w-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
         >
-          Descargar Excel (CSV)
+          Descargar Excel
         </button>
       </div>
     </div>

@@ -3,6 +3,12 @@ import { useParams } from 'react-router'
 import { obtenerPedido } from './api'
 import type { Pedido } from './types'
 
+const formatoMoneda = new Intl.NumberFormat('es-CO', {
+  style: 'currency',
+  currency: 'COP',
+  maximumFractionDigits: 0,
+})
+
 export function ComandaPage() {
   const { id } = useParams<{ id: string }>()
   const [pedido, setPedido] = useState<Pedido | null>(null)
@@ -54,7 +60,11 @@ export function ComandaPage() {
         {pedido.items.length === 0 && <p>Sin productos.</p>}
       </div>
 
-      <div className="border-t border-dashed border-border pt-3 text-center text-xs text-muted-foreground">
+      <div className="border-t border-dashed border-border pt-3 text-right font-semibold">
+        <p>Total: {formatoMoneda.format(pedido.total)}</p>
+      </div>
+
+      <div className="mt-3 border-t border-dashed border-border pt-3 text-center text-xs text-muted-foreground">
         <p>--- Fin de la comanda ---</p>
       </div>
     </div>

@@ -5,6 +5,7 @@ export interface ConsumoItemInput {
   origen: OrigenConsumo
   id_producto: number
   cantidad: number
+  nota?: string
 }
 
 export interface ConsumoItem {
@@ -14,6 +15,7 @@ export interface ConsumoItem {
   nombre_producto: string
   cantidad: number
   precio_unitario: number
+  nota: string | null
   facturado: boolean
   enviado_cocina_en: string | null
 }

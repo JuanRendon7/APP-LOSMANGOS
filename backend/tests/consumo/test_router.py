@@ -343,6 +343,38 @@ def test_enviar_comanda_no_repite_items_ya_enviados(client, usuario_admin):
     assert len(tercera.json()["items"]) == 1
 
 
+def test_nota_de_consumo_se_guarda_y_aparece_en_la_comanda(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    headers = auth_headers(token)
+    reserva = _crear_reserva_con_checkin(client, headers, "204", "1100000011")
+    producto = _crear_producto_restaurante(client, headers, "Omelette")
+
+    crear = client.post(
+        "/consumo",
+        headers=headers,
+        json={
+            "id_reserva": reserva["id_reserva"],
+            "origen": "RESTAURANTE",
+            "id_producto": producto["id_producto"],
+            "cantidad": 1,
+            "nota": "Sin cebolla",
+        },
+    )
+    assert crear.status_code == 201, crear.text
+    assert crear.json()["nota"] == "Sin cebolla"
+
+    resumen = client.get(
+        "/consumo", headers=headers, params={"id_reserva": reserva["id_reserva"]}
+    )
+    assert resumen.json()["items"][0]["nota"] == "Sin cebolla"
+
+    comanda = client.post(
+        f"/consumo/reserva/{reserva['id_reserva']}/comanda", headers=headers
+    )
+    assert comanda.status_code == 200, comanda.text
+    assert comanda.json()["items"][0]["nota"] == "Sin cebolla"
+
+
 def test_obtener_comanda_por_ids(client, usuario_admin):
     token = token_para(client, usuario_admin.email)
     headers = auth_headers(token)

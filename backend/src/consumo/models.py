@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer
+from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,6 +26,7 @@ class ConsumoItem(Base, TimestampMixin):
     )
     cantidad: Mapped[int] = mapped_column(Integer)
     precio_unitario: Mapped[int] = mapped_column(Integer)
+    nota: Mapped[str | None] = mapped_column(String(255), default=None)
     creado_por: Mapped[int | None] = mapped_column(
         ForeignKey("hotel.usuario.id_usuario"), default=None
     )

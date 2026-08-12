@@ -37,6 +37,7 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
   const [origen, setOrigen] = useState<OrigenConsumo>('BAR')
   const [idProducto, setIdProducto] = useState<number | ''>('')
   const [cantidad, setCantidad] = useState(1)
+  const [nota, setNota] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [procesando, setProcesando] = useState(false)
   const [enviandoComanda, setEnviandoComanda] = useState(false)
@@ -75,9 +76,11 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
         origen,
         id_producto: idProducto,
         cantidad,
+        nota: nota || undefined,
       })
       setIdProducto('')
       setCantidad(1)
+      setNota('')
       await cargar()
     } catch {
       setError('No se pudo agregar el producto.')
@@ -129,43 +132,43 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
 
       <ul className="mb-2 space-y-1">
         {resumen.items.map((item) => (
-          <li
-            key={item.id_consumo}
-            className="flex items-center justify-between gap-2 text-sm"
-          >
-            <span>
-              {item.cantidad} × {item.nombre_producto}{' '}
-              <span className="text-xs text-muted-foreground">
-                ({ETIQUETA_ORIGEN[item.origen]})
-              </span>
-              {item.facturado && (
-                <span className="ml-1.5 inline-flex items-center rounded-full bg-exito-100 px-1.5 py-0.5 text-[10px] font-medium text-exito-800">
-                  Facturado
+          <li key={item.id_consumo} className="text-sm">
+            <div className="flex items-center justify-between gap-2">
+              <span>
+                {item.cantidad} × {item.nombre_producto}{' '}
+                <span className="text-xs text-muted-foreground">
+                  ({ETIQUETA_ORIGEN[item.origen]})
                 </span>
-              )}
-              {item.enviado_cocina_en ? (
-                <span className="ml-1.5 inline-flex items-center rounded-full bg-info-100 px-1.5 py-0.5 text-[10px] font-medium text-info-800">
-                  En cocina
-                </span>
-              ) : (
-                item.origen === 'RESTAURANTE' && (
-                  <span className="ml-1.5 inline-flex items-center rounded-full bg-alerta-100 px-1.5 py-0.5 text-[10px] font-medium text-alerta-800">
-                    Sin enviar
+                {item.facturado && (
+                  <span className="ml-1.5 inline-flex items-center rounded-full bg-exito-100 px-1.5 py-0.5 text-[10px] font-medium text-exito-800">
+                    Facturado
                   </span>
-                )
-              )}
-            </span>
-            <span className="flex shrink-0 items-center gap-2">
-              {formatoMoneda.format(item.cantidad * item.precio_unitario)}
-              {puedeEditar && !item.facturado && (
-                <button
-                  onClick={() => manejarEliminar(item.id_consumo)}
-                  className="text-xs text-destructive hover:underline"
-                >
-                  Quitar
-                </button>
-              )}
-            </span>
+                )}
+                {item.enviado_cocina_en ? (
+                  <span className="ml-1.5 inline-flex items-center rounded-full bg-info-100 px-1.5 py-0.5 text-[10px] font-medium text-info-800">
+                    En cocina
+                  </span>
+                ) : (
+                  item.origen === 'RESTAURANTE' && (
+                    <span className="ml-1.5 inline-flex items-center rounded-full bg-alerta-100 px-1.5 py-0.5 text-[10px] font-medium text-alerta-800">
+                      Sin enviar
+                    </span>
+                  )
+                )}
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                {formatoMoneda.format(item.cantidad * item.precio_unitario)}
+                {puedeEditar && !item.facturado && (
+                  <button
+                    onClick={() => manejarEliminar(item.id_consumo)}
+                    className="text-xs text-destructive hover:underline"
+                  >
+                    Quitar
+                  </button>
+                )}
+              </span>
+            </div>
+            {item.nota && <p className="text-xs text-muted-foreground">Nota: {item.nota}</p>}
           </li>
         ))}
         {resumen.items.length === 0 && (
@@ -204,6 +207,13 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
             value={cantidad}
             onChange={(e) => setCantidad(Number(e.target.value) || 1)}
             className="w-16 rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+          />
+          <input
+            type="text"
+            placeholder="Nota (opcional)"
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            className="min-w-[10rem] flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
           <button
             onClick={manejarAgregar}

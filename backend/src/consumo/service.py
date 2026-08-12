@@ -47,6 +47,7 @@ class ConsumoService:
                 id_producto_bar=datos.id_producto,
                 cantidad=datos.cantidad,
                 precio_unitario=producto.precio_venta,
+                nota=datos.nota,
                 creado_por=creado_por,
             )
         elif datos.origen == "RESTAURANTE":
@@ -59,6 +60,7 @@ class ConsumoService:
                 id_producto_restaurante=datos.id_producto,
                 cantidad=datos.cantidad,
                 precio_unitario=producto.precio_venta,
+                nota=datos.nota,
                 creado_por=creado_por,
             )
         else:

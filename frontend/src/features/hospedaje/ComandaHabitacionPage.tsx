@@ -64,6 +64,7 @@ export function ComandaHabitacionPage() {
             <p className="font-semibold">
               {item.cantidad} × {item.nombre_producto}
             </p>
+            {item.nota && <p className="pl-3 text-xs">Nota: {item.nota}</p>}
           </div>
         ))}
         {comanda.items.length === 0 && <p>Sin productos.</p>}

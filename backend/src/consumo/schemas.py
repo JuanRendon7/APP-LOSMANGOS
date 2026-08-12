@@ -8,6 +8,7 @@ class ConsumoItemCreate(BaseModel):
     origen: str
     id_producto: int
     cantidad: int = Field(gt=0)
+    nota: str | None = Field(default=None, max_length=255)
 
 
 class ConsumoItemResponse(BaseModel):
@@ -17,6 +18,7 @@ class ConsumoItemResponse(BaseModel):
     nombre_producto: str
     cantidad: int
     precio_unitario: int
+    nota: str | None
     facturado: bool
     enviado_cocina_en: datetime | None
 

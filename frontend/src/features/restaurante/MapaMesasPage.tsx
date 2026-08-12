@@ -317,6 +317,7 @@ export function MapaMesasPage() {
       {seleccionada && !modoEdicion && (
         <PedidoPanel
           mesa={seleccionada}
+          mesasLibres={mesas.filter((m) => m.estado === 'LIBRE' && m.activo)}
           onCerrar={() => setIdSeleccionada(null)}
           onActualizado={recargar}
         />

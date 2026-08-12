@@ -84,6 +84,53 @@ def test_ciclo_completo_pedido_libera_la_mesa(client, usuario_admin):
     assert mesa_final["pedido_activo"] is None
 
 
+def test_mover_pedido_a_otra_mesa(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    headers = auth_headers(token)
+    mesa_origen = _crear_mesa(client, headers, "Mesa 20")
+    mesa_destino = _crear_mesa(client, headers, "Mesa 21")
+
+    crear = client.post(
+        "/pedidos", headers=headers, json={"id_mesa": mesa_origen["id_mesa"]}
+    )
+    pedido = crear.json()
+
+    mover = client.post(
+        f"/pedidos/{pedido['id_pedido']}/mover",
+        headers=headers,
+        json={"id_mesa_destino": mesa_destino["id_mesa"]},
+    )
+    assert mover.status_code == 200, mover.text
+    assert mover.json()["id_mesa"] == mesa_destino["id_mesa"]
+
+    mesas = {m["id_mesa"]: m for m in client.get("/mesas", headers=headers).json()}
+    assert mesas[mesa_origen["id_mesa"]]["estado"] == "LIBRE"
+    assert mesas[mesa_destino["id_mesa"]]["estado"] == "OCUPADA"
+    assert (
+        mesas[mesa_destino["id_mesa"]]["pedido_activo"]["id_pedido"]
+        == pedido["id_pedido"]
+    )
+
+
+def test_no_se_puede_mover_pedido_a_mesa_ocupada(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    headers = auth_headers(token)
+    mesa_origen = _crear_mesa(client, headers, "Mesa 22")
+    mesa_destino = _crear_mesa(client, headers, "Mesa 23")
+
+    pedido = client.post(
+        "/pedidos", headers=headers, json={"id_mesa": mesa_origen["id_mesa"]}
+    ).json()
+    client.post("/pedidos", headers=headers, json={"id_mesa": mesa_destino["id_mesa"]})
+
+    mover = client.post(
+        f"/pedidos/{pedido['id_pedido']}/mover",
+        headers=headers,
+        json={"id_mesa_destino": mesa_destino["id_mesa"]},
+    )
+    assert mover.status_code == 422, mover.text
+
+
 def test_no_se_puede_crear_pedido_en_mesa_ocupada(client, usuario_admin):
     token = token_para(client, usuario_admin.email)
     headers = auth_headers(token)

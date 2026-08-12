@@ -68,3 +68,10 @@ export async function cerrarPedido(idPedido: number): Promise<Pedido> {
   const { data } = await apiClient.post<Pedido>(`/pedidos/${idPedido}/cerrar`)
   return data
 }
+
+export async function moverPedido(idPedido: number, idMesaDestino: number): Promise<Pedido> {
+  const { data } = await apiClient.post<Pedido>(`/pedidos/${idPedido}/mover`, {
+    id_mesa_destino: idMesaDestino,
+  })
+  return data
+}

@@ -15,6 +15,7 @@ import {
   crearPedido,
   eliminarItem,
   enviarACocina,
+  moverPedido,
 } from './api'
 import type { EstadoPedido, Mesa, OrigenPedidoItem } from './types'
 
@@ -49,11 +50,12 @@ const SIGUIENTE_ESTADO: Partial<Record<EstadoPedido, EstadoPedido>> = {
 
 interface Props {
   mesa: Mesa
+  mesasLibres: Mesa[]
   onCerrar: () => void
   onActualizado: () => Promise<void> | void
 }
 
-export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
+export function PedidoPanel({ mesa, mesasLibres, onCerrar, onActualizado }: Props) {
   const { tienePermiso } = useAuth()
   const [productosRestaurante, setProductosRestaurante] = useState<ProductoRestaurante[]>([])
   const [productosBar, setProductosBar] = useState<ProductoBar[]>([])
@@ -64,6 +66,7 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [procesando, setProcesando] = useState(false)
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO')
+  const [mesaDestino, setMesaDestino] = useState('')
   const { turnos, idTurno, setIdTurno } = useTurnoCobro()
 
   const puedeEditar = tienePermiso('PEDIDOS', 'EDITAR')
@@ -289,6 +292,35 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
           >
             Ver comanda
           </button>
+        )}
+        {puedeEditar && pedido.estado !== 'CERRADO' && mesasLibres.length > 0 && (
+          <>
+            <select
+              value={mesaDestino}
+              onChange={(e) => setMesaDestino(e.target.value)}
+              className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="">Mover a otra mesa...</option>
+              {mesasLibres.map((m) => (
+                <option key={m.id_mesa} value={m.id_mesa}>
+                  {m.nombre}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={() =>
+                conManejoDeError(async () => {
+                  await moverPedido(pedido.id_pedido, Number(mesaDestino))
+                  setMesaDestino('')
+                  onCerrar()
+                })
+              }
+              disabled={procesando || !mesaDestino}
+              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-secondary disabled:opacity-50"
+            >
+              Mover pedido
+            </button>
+          </>
         )}
         {puedeEditar && pedido.estado !== 'CERRADO' && pedido.items.length > 0 && (
           <>

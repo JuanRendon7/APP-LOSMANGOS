@@ -12,6 +12,7 @@ from src.restaurante.schemas import (
     PedidoCreate,
     PedidoItemCreate,
     PedidoItemResponse,
+    PedidoMoverMesa,
     PedidoResponse,
 )
 from src.restaurante.service import RestauranteService
@@ -220,6 +221,19 @@ def avanzar_estado(
     servicio: RestauranteService = Depends(get_restaurante_service),
 ):
     return _manejar_accion_pedido(servicio.avanzar_estado, db, id_pedido)
+
+
+@pedidos_router.post("/{id_pedido}/mover", response_model=PedidoResponse)
+def mover_pedido(
+    id_pedido: int,
+    datos: PedidoMoverMesa,
+    db: Session = Depends(get_db),
+    _: UsuarioActual = Depends(requiere_permiso("PEDIDOS", "EDITAR")),
+    servicio: RestauranteService = Depends(get_restaurante_service),
+):
+    return _manejar_accion_pedido(
+        lambda id_p: servicio.mover_pedido(id_p, datos.id_mesa_destino), db, id_pedido
+    )
 
 
 @pedidos_router.post("/{id_pedido}/cerrar", response_model=PedidoResponse)

@@ -152,6 +152,21 @@ class RestauranteService:
         pedido.estado = siguiente
         return pedido
 
+    def mover_pedido(self, id_pedido: int, id_mesa_destino: int) -> Pedido:
+        pedido = self.obtener_pedido(id_pedido)
+        if pedido.estado == "CERRADO":
+            raise BusinessRuleError("El pedido esta cerrado")
+        if pedido.id_mesa == id_mesa_destino:
+            raise BusinessRuleError("El pedido ya esta en esa mesa")
+        mesa_origen = self.obtener_mesa(pedido.id_mesa)
+        mesa_destino = self.obtener_mesa(id_mesa_destino)
+        if mesa_destino.estado != "LIBRE":
+            raise BusinessRuleError("La mesa destino no esta libre")
+        pedido.id_mesa = id_mesa_destino
+        mesa_destino.estado = "OCUPADA"
+        mesa_origen.estado = "LIBRE"
+        return pedido
+
     def cerrar_pedido(self, id_pedido: int) -> Pedido:
         pedido = self.obtener_pedido(id_pedido)
         if pedido.estado == "CERRADO":

@@ -30,6 +30,10 @@ class PedidoCreate(BaseModel):
     id_mesa: int
 
 
+class PedidoMoverMesa(BaseModel):
+    id_mesa_destino: int
+
+
 class PedidoResponse(BaseModel):
     id_pedido: int
     id_mesa: int

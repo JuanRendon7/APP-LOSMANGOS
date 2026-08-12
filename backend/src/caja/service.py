@@ -213,7 +213,17 @@ class CajaService:
             monto=total,
             creado_por=id_usuario,
         )
-        return self.repository.crear_venta(venta)
+        venta = self.repository.crear_venta(venta)
+        for item in pedido.items:
+            venta_item = VentaItem(
+                id_venta=venta.id_venta,
+                id_producto_bar=item.id_producto_bar,
+                id_producto_restaurante=item.id_producto_restaurante,
+                cantidad=item.cantidad,
+                precio_unitario=item.precio_unitario,
+            )
+            self.repository.agregar_venta_item(venta_item)
+        return venta
 
     def venta_mostrador(
         self,

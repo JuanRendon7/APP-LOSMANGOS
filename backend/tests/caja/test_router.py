@@ -312,6 +312,13 @@ def test_cobrar_pedido_lo_cierra_y_libera_la_mesa(client, usuario_admin):
     assert venta.status_code == 201, venta.text
     assert venta.json()["monto"] == 40000
 
+    # La venta debe guardar el detalle de productos del pedido, no solo el
+    # total: de eso dependen los reportes de restaurante y bar por item.
+    items = venta.json()["items"]
+    assert len(items) == 1
+    assert items[0]["id_producto_restaurante"] == producto["id_producto"]
+    assert items[0]["cantidad"] == 2
+
     mesas = client.get("/mesas", headers=headers).json()
     mesa_actual = next(m for m in mesas if m["id_mesa"] == mesa["id_mesa"])
     assert mesa_actual["estado"] == "LIBRE"

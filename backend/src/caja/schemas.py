@@ -92,6 +92,7 @@ class VentaResponse(BaseModel):
     id_reserva: int | None
     id_pedido: int | None
     nombre_mesa: str | None
+    numero_habitacion: str | None
     metodo_pago: str
     monto: int
     creado_en: datetime

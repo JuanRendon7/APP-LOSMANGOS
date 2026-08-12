@@ -189,6 +189,15 @@ class CajaService:
         venta = self.repository.crear_venta(venta)
         reserva.pagada = True
         self.consumo_repository.marcar_facturados(consumo_pendiente, venta.id_venta)
+        for consumo in consumo_pendiente:
+            venta_item = VentaItem(
+                id_venta=venta.id_venta,
+                id_producto_bar=consumo.id_producto_bar,
+                id_producto_restaurante=consumo.id_producto_restaurante,
+                cantidad=consumo.cantidad,
+                precio_unitario=consumo.precio_unitario,
+            )
+            self.repository.agregar_venta_item(venta_item)
         return venta
 
     def cobrar_pedido(

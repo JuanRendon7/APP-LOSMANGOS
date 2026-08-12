@@ -47,6 +47,7 @@ export interface Venta {
   id_reserva: number | null
   id_pedido: number | null
   nombre_mesa: string | null
+  numero_habitacion: string | null
   metodo_pago: MetodoPago
   monto: number
   creado_en: string

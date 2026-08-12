@@ -566,6 +566,12 @@ function VentaMostrador({
               venta.items.length > 0
                 ? venta.items.map((item) => `${item.cantidad}× ${item.nombre_producto}`).join(', ')
                 : null
+            const lugar =
+              venta.origen === 'MESA' && venta.nombre_mesa
+                ? venta.nombre_mesa
+                : venta.origen === 'HABITACION' && venta.numero_habitacion
+                  ? `Habitacion ${venta.numero_habitacion}`
+                  : null
             return (
               <li key={venta.id_venta} className="rounded-md px-2 py-1.5 odd:bg-muted/40">
                 <div className="flex items-center justify-between gap-2">
@@ -581,6 +587,7 @@ function VentaMostrador({
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
                   {formatoHoraBogota.format(new Date(venta.creado_en))} · {contexto}
+                  {lugar && ` · ${lugar}`}
                 </p>
               </li>
             )

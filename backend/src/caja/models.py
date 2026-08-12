@@ -5,6 +5,7 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.auth.models import Usuario
+from src.hospedaje.models import Reserva
 from src.productos.models import ProductoBar, ProductoRestaurante
 from src.restaurante.models import Pedido
 from src.shared.database import Base, TimestampMixin
@@ -81,6 +82,7 @@ class Venta(Base, TimestampMixin):
 
     turno: Mapped["TurnoCaja"] = relationship(back_populates="ventas")
     pedido: Mapped[Pedido | None] = relationship()
+    reserva: Mapped[Reserva | None] = relationship()
     items: Mapped[list["VentaItem"]] = relationship(
         back_populates="venta",
         order_by="VentaItem.id_venta_item",

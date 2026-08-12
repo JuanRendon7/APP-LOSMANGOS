@@ -28,6 +28,15 @@ const ETIQUETA_METODO: Record<MetodoPago, string> = {
 const ETIQUETA_ORIGEN_VENTA: Record<string, string> = {
   MESA: 'Mesa',
   MOSTRADOR: 'Mostrador',
+  HABITACION: 'Habitacion',
+}
+
+function lugarVenta(venta: Venta): string {
+  if (venta.origen === 'MESA') return venta.nombre_mesa ?? 'Mesa'
+  if (venta.origen === 'HABITACION') {
+    return venta.numero_habitacion ? `Habitacion ${venta.numero_habitacion}` : 'Habitacion'
+  }
+  return 'Mostrador'
 }
 
 const formatoHora = new Intl.DateTimeFormat('es-CO', {
@@ -51,7 +60,9 @@ export function RestauranteTab({ desde, hasta }: Props) {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [metodoPago, setMetodoPago] = useState<MetodoPago | 'TODOS'>('TODOS')
-  const [origen, setOrigen] = useState<Extract<OrigenVenta, 'MESA' | 'MOSTRADOR'> | 'TODOS'>('TODOS')
+  const [origen, setOrigen] = useState<
+    Extract<OrigenVenta, 'MESA' | 'MOSTRADOR' | 'HABITACION'> | 'TODOS'
+  >('TODOS')
   const [detalle, setDetalle] = useState<Detalle>(null)
 
   useEffect(() => {
@@ -143,7 +154,7 @@ export function RestauranteTab({ desde, hasta }: Props) {
     const filas = itemsRestaurante.map((i) => [
       i.venta.creado_en,
       ETIQUETA_ORIGEN_VENTA[i.venta.origen] ?? i.venta.origen,
-      i.venta.nombre_mesa ?? '',
+      i.venta.nombre_mesa ?? i.venta.numero_habitacion ?? '',
       i.nombre_producto,
       i.cantidad,
       i.precio_unitario,
@@ -160,7 +171,7 @@ export function RestauranteTab({ desde, hasta }: Props) {
       columnas: [
         { titulo: 'Fecha', formato: 'fechahora' },
         { titulo: 'Origen', ancho: 14 },
-        { titulo: 'Mesa', ancho: 14 },
+        { titulo: 'Mesa/Habitacion', ancho: 16 },
         { titulo: 'Producto', ancho: 26 },
         { titulo: 'Cantidad', formato: 'entero', totalizar: true },
         { titulo: 'Precio unitario', formato: 'moneda' },
@@ -230,7 +241,7 @@ export function RestauranteTab({ desde, hasta }: Props) {
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium text-foreground">
-                      {venta.origen === 'MESA' ? (venta.nombre_mesa ?? 'Mesa') : 'Mostrador'}
+                      {lugarVenta(venta)}
                       <span className="ml-2 text-xs font-normal text-muted-foreground">
                         {formatoHora.format(new Date(venta.creado_en))} ·{' '}
                         {ETIQUETA_METODO[venta.metodo_pago]}
@@ -287,6 +298,9 @@ export function RestauranteTab({ desde, hasta }: Props) {
             </Chip>
             <Chip activo={origen === 'MOSTRADOR'} onClick={() => setOrigen('MOSTRADOR')}>
               Mostrador
+            </Chip>
+            <Chip activo={origen === 'HABITACION'} onClick={() => setOrigen('HABITACION')}>
+              Habitacion
             </Chip>
           </div>
         </div>

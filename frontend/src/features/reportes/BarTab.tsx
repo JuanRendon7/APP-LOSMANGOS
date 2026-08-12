@@ -24,6 +24,14 @@ const formatoHora = new Intl.DateTimeFormat('es-CO', {
   timeZone: 'America/Bogota',
 })
 
+function lugarVenta(venta: Venta): string {
+  if (venta.origen === 'MESA') return venta.nombre_mesa ?? 'Mesa'
+  if (venta.origen === 'HABITACION') {
+    return venta.numero_habitacion ? `Habitacion ${venta.numero_habitacion}` : 'Habitacion'
+  }
+  return 'Mostrador'
+}
+
 type Detalle = 'ventas' | 'inventario' | null
 
 interface Props {
@@ -232,11 +240,7 @@ export function BarTab({ desde, hasta }: Props) {
                 >
                   <div className="min-w-0">
                     <p className="truncate font-medium text-foreground">
-                      {venta.origen === 'MESA'
-                        ? (venta.nombre_mesa ?? 'Mesa')
-                        : venta.origen === 'MOSTRADOR'
-                          ? 'Mostrador'
-                          : venta.origen}
+                      {lugarVenta(venta)}
                       <span className="ml-2 text-xs font-normal text-muted-foreground">
                         {formatoHora.format(new Date(venta.creado_en))} ·{' '}
                         {ETIQUETA_METODO[venta.metodo_pago]}

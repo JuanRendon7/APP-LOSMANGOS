@@ -211,6 +211,14 @@ def test_cobrar_habitacion_no_hace_checkout_y_suma_consumo(client, usuario_admin
     datos = venta.json()
     assert datos["origen"] == "HABITACION"
     assert datos["monto"] == reserva["precio_total"] + 2 * 5000
+    assert datos["numero_habitacion"] == "102"
+
+    # La venta debe guardar el detalle del consumo, no solo el total: de eso
+    # dependen "Movimientos de este turno" y los reportes de bar/restaurante.
+    items = datos["items"]
+    assert len(items) == 1
+    assert items[0]["id_producto_bar"] == producto["id_producto"]
+    assert items[0]["cantidad"] == 2
 
     # Cobrar ya no hace checkout: la habitacion sigue ocupada hasta que el
     # personal la libere explicitamente.
@@ -247,6 +255,8 @@ def test_cobrar_habitacion_antes_del_checkin(client, usuario_admin):
     )
     assert venta.status_code == 201, venta.text
     assert venta.json()["monto"] == reserva["precio_total"]
+    assert venta.json()["numero_habitacion"] == "102"
+    assert venta.json()["items"] == []
 
 
 def test_no_se_puede_cobrar_dos_veces_la_misma_habitacion(client, usuario_admin):

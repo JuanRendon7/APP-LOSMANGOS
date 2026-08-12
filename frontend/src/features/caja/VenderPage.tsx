@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import { listarProductosBar, listarProductosRestaurante } from '@/features/productos/api'
 import type { ProductoBar, ProductoRestaurante } from '@/features/productos/types'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { formatoHoraBogota } from '@/shared/lib/tiempo'
 import { BuscadorProducto } from '@/shared/ui/BuscadorProducto'
 import { abrirTurno, deshacerUltimaVenta, listarVentas, mensajeErrorCaja, ventaMostrador } from './api'
 import { SelectorCaja } from './SelectorCaja'
@@ -37,8 +38,6 @@ const CONTEXTO_ORIGEN: Record<OrigenVenta, string> = {
   MESA: 'Cobro de mesa',
   MOSTRADOR: 'Venta directa',
 }
-
-const formatoHora = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' })
 
 interface ItemCarrito extends VentaMostradorItemInput {
   nombre: string
@@ -581,7 +580,7 @@ function VentaMostrador({
                   </span>
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
-                  {formatoHora.format(new Date(venta.creado_en))} · {contexto}
+                  {formatoHoraBogota.format(new Date(venta.creado_en))} · {contexto}
                 </p>
               </li>
             )

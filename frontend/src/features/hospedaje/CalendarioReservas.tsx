@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { anioMesBogota, fechaBogotaISO } from '@/shared/lib/tiempo'
 import { ESTILO_TONO } from '@/shared/ui/estado'
 import { listarReservas } from './api'
 import type { EstadoReserva, Habitacion, Reserva } from './types'
@@ -27,20 +28,15 @@ function aISO(anio: number, mes: number, dia: number): string {
   return `${anio}-${pad(mes + 1)}-${pad(dia)}`
 }
 
-function hoyISO(): string {
-  const d = new Date()
-  return aISO(d.getFullYear(), d.getMonth(), d.getDate())
-}
-
 interface Props {
   habitaciones: Habitacion[]
   onSeleccionar: (idHabitacion: number) => void
 }
 
 export function CalendarioReservas({ habitaciones, onSeleccionar }: Props) {
-  const hoy = new Date()
-  const [anio, setAnio] = useState(hoy.getFullYear())
-  const [mes, setMes] = useState(hoy.getMonth())
+  const { anio: anioHoy, mes: mesHoy } = anioMesBogota()
+  const [anio, setAnio] = useState(anioHoy)
+  const [mes, setMes] = useState(mesHoy)
   const [reservas, setReservas] = useState<Reserva[]>([])
   const [cargando, setCargando] = useState(true)
 
@@ -74,11 +70,11 @@ export function CalendarioReservas({ habitaciones, onSeleccionar }: Props) {
   }
 
   const irAHoy = () => {
-    setAnio(hoy.getFullYear())
-    setMes(hoy.getMonth())
+    setAnio(anioHoy)
+    setMes(mesHoy)
   }
 
-  const hoyIso = hoyISO()
+  const hoyIso = fechaBogotaISO()
   const habitacionesOrdenadas = [...habitaciones].sort((a, b) => a.numero.localeCompare(b.numero))
 
   return (

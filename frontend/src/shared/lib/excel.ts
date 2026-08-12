@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs'
+import { fechaExcelBogota } from './tiempo'
 
 /** Colores corporativos Hotel Los Mangos (equivalentes hex de los tokens oklch de index.css). */
 export const PALETA_EXCEL = {
@@ -44,7 +45,9 @@ const FORMATOS_NUMERO: Partial<Record<FormatoColumnaExcel, string>> = {
 function convertirValor(valor: string | number | Date | null, formato: FormatoColumnaExcel) {
   if (valor === null || valor === '') return null
   if (formato === 'fecha' || formato === 'fechahora') {
-    return valor instanceof Date ? valor : new Date(valor)
+    // xlsx no guarda zona horaria: sin esta conversion, el archivo se ve con
+    // la hora del computador donde se abre en vez de la hora de Bogota.
+    return fechaExcelBogota(valor)
   }
   if (formato === 'moneda' || formato === 'entero') {
     if (typeof valor === 'number') return valor

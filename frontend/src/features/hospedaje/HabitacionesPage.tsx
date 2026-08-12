@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router'
+import { fechaBogotaISO } from '@/shared/lib/tiempo'
 import { ESTILO_TONO } from '@/shared/ui/estado'
 import { actualizarEstadoHabitacion, listarHabitaciones, listarReservas } from './api'
 import { CalendarioReservas } from './CalendarioReservas'
@@ -81,11 +82,6 @@ function PuertaIlustrada({
 
 const ORDEN_ESTADOS: EstadoHabitacion[] = ['DISPONIBLE', 'OCUPADA', 'LIMPIEZA', 'MANTENIMIENTO']
 
-function hoyISO(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 export function HabitacionesPage() {
   const [searchParams] = useSearchParams()
   const [habitaciones, setHabitaciones] = useState<Habitacion[]>([])
@@ -120,7 +116,7 @@ export function HabitacionesPage() {
   }, [recargar])
 
   useEffect(() => {
-    const hoy = hoyISO()
+    const hoy = fechaBogotaISO()
     listarReservas({ estado: 'RESERVADA', desde: hoy, hasta: hoy })
       .then((datos) => setLlegadasHoy(datos.filter((r) => r.fecha_checkin_prevista === hoy)))
       .catch(() => {})
@@ -165,7 +161,7 @@ export function HabitacionesPage() {
     return base
   }, [habitaciones])
 
-  const hoy = hoyISO()
+  const hoy = fechaBogotaISO()
   const salidasHoy = habitaciones.filter(
     (h) => h.estado === 'OCUPADA' && h.reserva_activa?.fecha_checkout_prevista === hoy,
   )

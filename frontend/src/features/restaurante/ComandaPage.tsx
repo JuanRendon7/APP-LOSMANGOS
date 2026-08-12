@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
+import { formatoFechaBogota, formatoHoraBogota } from '@/shared/lib/tiempo'
 import { obtenerPedido } from './api'
 import type { Pedido } from './types'
 
@@ -44,7 +45,7 @@ export function ComandaPage() {
 
       <p>Mesa: {pedido.nombre_mesa}</p>
       <p>
-        Fecha: {fecha.toLocaleDateString('es-CO')} {fecha.toLocaleTimeString('es-CO')}
+        Fecha: {formatoFechaBogota.format(fecha)} {formatoHoraBogota.format(fecha)}
       </p>
       <p>Pedido #{pedido.id_pedido}</p>
 

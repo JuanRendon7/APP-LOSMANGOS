@@ -4,6 +4,7 @@ import { listarConfiguracion } from '@/features/configuracion/api'
 import { listarHabitaciones, listarReservas } from '@/features/hospedaje/api'
 import { listarProductosBar } from '@/features/productos/api'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { fechaBogotaISO } from '@/shared/lib/tiempo'
 import { reproducirSonido } from './sonidos'
 import type { Notificacion } from './types'
 
@@ -11,11 +12,6 @@ const UMBRAL_HORAS_TURNO_ABIERTO = 12
 const CLAVE_DESCARTADAS = 'notificaciones_descartadas'
 const CLAVE_LEIDAS = 'notificaciones_leidas'
 const TTL_DESCARTE_MS = 20 * 60 * 60 * 1000
-
-function hoyISO(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 function leerMapa(clave: string): Record<string, number> {
   try {
@@ -69,7 +65,7 @@ export function useNotificaciones() {
   }, [descartadas])
 
   const cargar = useCallback(async () => {
-    const hoy = hoyISO()
+    const hoy = fechaBogotaISO()
     const items: Notificacion[] = []
     let huboError = false
 
@@ -133,8 +129,7 @@ export function useNotificaciones() {
       }
 
       if (veReportes) {
-        const ayer = new Date(Date.now() - 24 * 60 * 60 * 1000)
-        const ayerISO = `${ayer.getFullYear()}-${String(ayer.getMonth() + 1).padStart(2, '0')}-${String(ayer.getDate()).padStart(2, '0')}`
+        const ayerISO = fechaBogotaISO(Date.now() - 24 * 60 * 60 * 1000)
 
         const [abiertos, cerrados] = await Promise.all([
           listarTurnos({ estado: 'ABIERTO' }),

@@ -2,13 +2,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { fechaBogotaISO } from '@/shared/lib/tiempo'
 import { crearLiquidacion, actualizarLiquidacion } from './api'
 import type { Liquidacion } from './types'
-
-function hoyISO(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 const liquidacionSchema = z.object({
   nombre_empleado: z.string().min(1, { error: 'Escribe el nombre del empleado' }),
@@ -41,7 +37,7 @@ export function LiquidacionFormModal({ liquidacionExistente, onCerrar, onGuardad
       periodo: liquidacionExistente?.periodo ?? '',
       monto: liquidacionExistente?.monto ?? 0,
       concepto: liquidacionExistente?.concepto ?? '',
-      fecha_pago: liquidacionExistente?.fecha_pago ?? hoyISO(),
+      fecha_pago: liquidacionExistente?.fecha_pago ?? fechaBogotaISO(),
     },
   })
 

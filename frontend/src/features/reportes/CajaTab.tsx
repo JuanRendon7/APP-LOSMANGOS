@@ -6,15 +6,8 @@ import type { EstadoTurno, TipoTurno, TurnoCaja } from '@/features/caja/types'
 import { listarUsuarios } from '@/features/usuarios/api'
 import type { Usuario } from '@/features/usuarios/types'
 import { descargarExcel, PALETA_EXCEL } from '@/shared/lib/excel'
+import { formatoFechaBogota, formatoFechaHoraBogota } from '@/shared/lib/tiempo'
 import { Chip, formatoMoneda, StatCard } from './shared'
-
-const formatoFecha = new Intl.DateTimeFormat('es-CO', {
-  day: '2-digit',
-  month: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: 'America/Bogota',
-})
 
 type Detalle = 'turnos' | 'recaudado' | 'gastos' | 'descuadre' | null
 
@@ -246,7 +239,7 @@ export function CajaTab({ desde, hasta }: Props) {
                       <p className="truncate font-medium text-foreground">
                         {nombrePorUsuario.get(t.id_usuario) ?? `Usuario ${t.id_usuario}`}
                         <span className="ml-2 text-xs font-normal text-muted-foreground">
-                          {formatoFecha.format(new Date(t.creado_en))} ·{' '}
+                          {formatoFechaHoraBogota.format(new Date(t.creado_en))} ·{' '}
                           {t.tipo === 'NOCTURNO' ? 'Nocturna' : 'Diurna'} ·{' '}
                           {t.estado === 'ABIERTO' ? 'Abierto' : 'Cerrado'}
                         </span>
@@ -354,7 +347,7 @@ export function CajaTab({ desde, hasta }: Props) {
                   >
                     <span className="truncate">
                       {nombrePorUsuario.get(t.id_usuario) ?? `Usuario ${t.id_usuario}`} ·{' '}
-                      {new Date(t.creado_en).toLocaleDateString('es-CO')} ·{' '}
+                      {formatoFechaBogota.format(new Date(t.creado_en))} ·{' '}
                       {t.tipo === 'NOCTURNO' ? 'Nocturna' : 'Diurna'}
                     </span>
                     <span

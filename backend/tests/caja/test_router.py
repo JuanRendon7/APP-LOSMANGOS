@@ -311,6 +311,7 @@ def test_cobrar_pedido_lo_cierra_y_libera_la_mesa(client, usuario_admin):
     )
     assert venta.status_code == 201, venta.text
     assert venta.json()["monto"] == 40000
+    assert venta.json()["nombre_mesa"] == "Mesa Caja 1"
 
     # La venta debe guardar el detalle de productos del pedido, no solo el
     # total: de eso dependen los reportes de restaurante y bar por item.

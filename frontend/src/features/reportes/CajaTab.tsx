@@ -8,6 +8,16 @@ import type { Usuario } from '@/features/usuarios/types'
 import { descargarExcel, PALETA_EXCEL } from '@/shared/lib/excel'
 import { Chip, formatoMoneda, StatCard } from './shared'
 
+const formatoFecha = new Intl.DateTimeFormat('es-CO', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'America/Bogota',
+})
+
+type Detalle = 'turnos' | 'recaudado' | 'gastos' | 'descuadre' | null
+
 interface Props {
   desde: string
   hasta: string
@@ -21,6 +31,7 @@ export function CajaTab({ desde, hasta }: Props) {
   const [idUsuario, setIdUsuario] = useState<number | 'TODOS'>('TODOS')
   const [estado, setEstado] = useState<EstadoTurno | 'TODOS'>('TODOS')
   const [tipo, setTipo] = useState<TipoTurno | 'TODOS'>('TODOS')
+  const [detalle, setDetalle] = useState<Detalle>(null)
 
   useEffect(() => {
     listarUsuarios()
@@ -87,6 +98,30 @@ export function CajaTab({ desde, hasta }: Props) {
       datosMetodo: metodo,
     }
   }, [turnos])
+
+  const turnosDetalle = useMemo(() => {
+    const recaudo = (t: TurnoCaja) =>
+      t.total_efectivo + t.total_tarjeta + t.total_transferencia + t.total_qr
+    if (detalle === 'recaudado') {
+      return [...turnos].sort((a, b) => recaudo(b) - recaudo(a))
+    }
+    if (detalle === 'gastos') {
+      return [...turnos].sort((a, b) => b.total_gastos - a.total_gastos)
+    }
+    if (detalle === 'descuadre') {
+      return turnosConDescuadre
+    }
+    return [...turnos].sort(
+      (a, b) => new Date(b.creado_en).getTime() - new Date(a.creado_en).getTime(),
+    )
+  }, [turnos, detalle, turnosConDescuadre])
+
+  const TITULO_DETALLE: Record<Exclude<Detalle, null>, string> = {
+    turnos: 'Turnos en el rango',
+    recaudado: 'Turnos ordenados por recaudo',
+    gastos: 'Turnos ordenados por gastos',
+    descuadre: 'Turnos con descuadre',
+  }
 
   const descargar = async () => {
     if (turnos.length === 0) {
@@ -156,26 +191,83 @@ export function CajaTab({ desde, hasta }: Props) {
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard icon={Wallet} label="Turnos en el rango" valor={turnos.length} sub="Abiertos o cerrados" />
+        <StatCard
+          icon={Wallet}
+          label="Turnos en el rango"
+          valor={turnos.length}
+          sub="Abiertos o cerrados"
+          activo={detalle === 'turnos'}
+          onClick={() => setDetalle(detalle === 'turnos' ? null : 'turnos')}
+        />
         <StatCard
           icon={Coins}
           label="Total recaudado"
           valor={formatoMoneda.format(totalRecaudado)}
           sub="Todos los metodos de pago"
+          activo={detalle === 'recaudado'}
+          onClick={() => setDetalle(detalle === 'recaudado' ? null : 'recaudado')}
         />
         <StatCard
           icon={Receipt}
           label="Total gastos"
           valor={formatoMoneda.format(totalGastos)}
           sub="Registrados en los turnos"
+          activo={detalle === 'gastos'}
+          onClick={() => setDetalle(detalle === 'gastos' ? null : 'gastos')}
         />
         <StatCard
           icon={TriangleAlert}
           label="Turnos con descuadre"
           valor={turnosConDescuadre.length}
           sub="Contado distinto de lo esperado"
+          activo={detalle === 'descuadre'}
+          onClick={() => setDetalle(detalle === 'descuadre' ? null : 'descuadre')}
         />
       </div>
+
+      {detalle && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h2 className="mb-3 font-serif text-base font-semibold text-foreground">
+            {TITULO_DETALLE[detalle]} · {turnosDetalle.length}
+          </h2>
+          {turnosDetalle.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin turnos en este filtro.</p>
+          ) : (
+            <ul className="max-h-96 space-y-1.5 overflow-y-auto text-sm">
+              {turnosDetalle.map((t) => {
+                const recaudo =
+                  t.total_efectivo + t.total_tarjeta + t.total_transferencia + t.total_qr
+                return (
+                  <li
+                    key={t.id_turno}
+                    className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">
+                        {nombrePorUsuario.get(t.id_usuario) ?? `Usuario ${t.id_usuario}`}
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                          {formatoFecha.format(new Date(t.creado_en))} ·{' '}
+                          {t.tipo === 'NOCTURNO' ? 'Nocturna' : 'Diurna'} ·{' '}
+                          {t.estado === 'ABIERTO' ? 'Abierto' : 'Cerrado'}
+                        </span>
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        Recaudo {formatoMoneda.format(recaudo)} · Gastos{' '}
+                        {formatoMoneda.format(t.total_gastos)}
+                        {t.diferencia !== null &&
+                          ` · Diferencia ${t.diferencia > 0 ? '+' : ''}${formatoMoneda.format(t.diferencia)}`}
+                      </p>
+                    </div>
+                    <span className="shrink-0 font-semibold text-foreground">
+                      {formatoMoneda.format(t.monto_apertura)}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-3">
         <div>

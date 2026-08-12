@@ -46,6 +46,7 @@ export interface Venta {
   origen: OrigenVenta
   id_reserva: number | null
   id_pedido: number | null
+  nombre_mesa: string | null
   metodo_pago: MetodoPago
   monto: number
   creado_en: string

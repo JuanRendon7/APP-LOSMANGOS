@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from src.caja.models import Gasto, TurnoCaja, Venta, VentaItem
+from src.restaurante.models import Pedido
 
 # El hotel opera en horario de Colombia; "hoy" en un filtro de fecha debe
 # significar el dia calendario de Bogota, no el dia UTC del servidor (si no,
@@ -125,6 +126,7 @@ class CajaRepository:
             .options(
                 selectinload(Venta.items).selectinload(VentaItem.producto_bar),
                 selectinload(Venta.items).selectinload(VentaItem.producto_restaurante),
+                selectinload(Venta.pedido).selectinload(Pedido.mesa),
             )
         )
         return self.db.scalar(stmt)
@@ -140,6 +142,7 @@ class CajaRepository:
         stmt = select(Venta).options(
             selectinload(Venta.items).selectinload(VentaItem.producto_bar),
             selectinload(Venta.items).selectinload(VentaItem.producto_restaurante),
+            selectinload(Venta.pedido).selectinload(Pedido.mesa),
         )
         if id_turno is not None:
             stmt = stmt.where(Venta.id_turno_caja == id_turno)

@@ -91,6 +91,7 @@ class VentaResponse(BaseModel):
     origen: str
     id_reserva: int | None
     id_pedido: int | None
+    nombre_mesa: str | None
     metodo_pago: str
     monto: int
     creado_en: datetime

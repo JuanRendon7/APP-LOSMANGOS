@@ -66,6 +66,7 @@ def _venta_response(venta: Venta) -> VentaResponse:
         origen=venta.origen,
         id_reserva=venta.id_reserva,
         id_pedido=venta.id_pedido,
+        nombre_mesa=venta.pedido.mesa.nombre if venta.pedido else None,
         metodo_pago=venta.metodo_pago,
         monto=venta.monto,
         creado_en=venta.creado_en,

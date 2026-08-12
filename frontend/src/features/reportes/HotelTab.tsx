@@ -14,6 +14,7 @@ import {
   YAxis,
 } from 'recharts'
 import { listarVentas } from '@/features/caja/api'
+import type { MetodoPago, Venta } from '@/features/caja/types'
 import { listarHabitaciones, listarReservas } from '@/features/hospedaje/api'
 import type { EstadoHabitacion, EstadoReserva, Habitacion, Reserva } from '@/features/hospedaje/types'
 import { descargarExcel } from '@/shared/lib/excel'
@@ -33,9 +34,24 @@ const ETIQUETAS_ESTADO_HABITACION: Record<EstadoHabitacion, string> = {
   MANTENIMIENTO: 'Mantenimiento',
 }
 
+const ETIQUETA_METODO: Record<MetodoPago, string> = {
+  EFECTIVO: 'Efectivo',
+  TARJETA: 'Tarjeta',
+  TRANSFERENCIA: 'Transferencia',
+  QR: 'QR',
+}
+
+const formatoHora = new Intl.DateTimeFormat('es-CO', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'America/Bogota',
+})
+
 const COLORES_DONUT = ['var(--color-primary)', 'var(--color-marca-300)']
 
-type ClaveDetalle = 'ocupadas' | 'disponibles' | 'reservas' | null
+type ClaveDetalle = 'ingresos' | 'ocupadas' | 'disponibles' | 'reservas' | null
 
 interface Props {
   desde: string
@@ -45,7 +61,7 @@ interface Props {
 export function HotelTab({ desde, hasta }: Props) {
   const [habitaciones, setHabitaciones] = useState<Habitacion[]>([])
   const [reservas, setReservas] = useState<Reserva[]>([])
-  const [ingresos, setIngresos] = useState(0)
+  const [ventasHabitacion, setVentasHabitacion] = useState<Venta[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandido, setExpandido] = useState<ClaveDetalle>(null)
@@ -65,7 +81,7 @@ export function HotelTab({ desde, hasta }: Props) {
         if (cancelado) return
         setHabitaciones(hab)
         setReservas(res)
-        setIngresos(ventas.reduce((suma, v) => suma + v.monto, 0))
+        setVentasHabitacion(ventas)
         setError(null)
       } catch {
         if (!cancelado) setError('No se pudo cargar el resumen de hotel.')
@@ -151,6 +167,11 @@ export function HotelTab({ desde, hasta }: Props) {
   const reservasFiltradas =
     filtroEstado === 'TODAS' ? reservas : reservas.filter((r) => r.estado === filtroEstado)
   const numeroPorHabitacion = new Map(habitaciones.map((h) => [h.id_habitacion, h.numero]))
+  const reservaPorId = new Map(reservas.map((r) => [r.id_reserva, r]))
+  const ingresos = ventasHabitacion.reduce((suma, v) => suma + v.monto, 0)
+  const ventasHabitacionOrdenadas = [...ventasHabitacion].sort(
+    (a, b) => new Date(b.creado_en).getTime() - new Date(a.creado_en).getTime(),
+  )
 
   return (
     <div className="space-y-4">
@@ -162,6 +183,8 @@ export function HotelTab({ desde, hasta }: Props) {
           label="Ingresos por habitaciones"
           valor={formatoMoneda.format(ingresos)}
           sub={desde || hasta ? 'En el rango seleccionado' : 'Historico completo'}
+          onClick={() => setExpandido(expandido === 'ingresos' ? null : 'ingresos')}
+          activo={expandido === 'ingresos'}
         />
         <StatCard
           icon={CalendarClock}
@@ -230,7 +253,44 @@ export function HotelTab({ desde, hasta }: Props) {
         </div>
       )}
 
-      {expandido !== 'reservas' && expandido !== null && (
+      {expandido === 'ingresos' && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h2 className="mb-3 font-serif text-base font-semibold text-foreground">
+            Cobros de habitacion · {ventasHabitacionOrdenadas.length}
+          </h2>
+          {ventasHabitacionOrdenadas.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin cobros de habitacion en este filtro.</p>
+          ) : (
+            <ul className="max-h-72 space-y-1.5 overflow-y-auto text-sm">
+              {ventasHabitacionOrdenadas.map((v) => {
+                const reserva = v.id_reserva ? reservaPorId.get(v.id_reserva) : undefined
+                return (
+                  <li
+                    key={v.id_venta}
+                    className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">
+                        {reserva
+                          ? `${reserva.huesped.nombre} · Hab. ${numeroPorHabitacion.get(reserva.id_habitacion) ?? '—'}`
+                          : 'Reserva'}
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                          {formatoHora.format(new Date(v.creado_en))} · {ETIQUETA_METODO[v.metodo_pago]}
+                        </span>
+                      </p>
+                    </div>
+                    <span className="shrink-0 font-semibold text-foreground">
+                      {formatoMoneda.format(v.monto)}
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {(expandido === 'ocupadas' || expandido === 'disponibles') && (
         <div className="rounded-xl border border-border bg-card p-4">
           <h2 className="mb-3 font-serif text-base font-semibold text-foreground">
             {expandido === 'ocupadas' ? 'Habitaciones ocupadas' : 'Habitaciones disponibles'}

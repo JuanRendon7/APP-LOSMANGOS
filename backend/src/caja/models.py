@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.auth.models import Usuario
 from src.productos.models import ProductoBar, ProductoRestaurante
+from src.restaurante.models import Pedido
 from src.shared.database import Base, TimestampMixin
 
 ESTADOS_TURNO = ["ABIERTO", "CERRADO"]
@@ -79,6 +80,7 @@ class Venta(Base, TimestampMixin):
     )
 
     turno: Mapped["TurnoCaja"] = relationship(back_populates="ventas")
+    pedido: Mapped[Pedido | None] = relationship()
     items: Mapped[list["VentaItem"]] = relationship(
         back_populates="venta",
         order_by="VentaItem.id_venta_item",

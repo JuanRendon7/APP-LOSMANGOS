@@ -15,6 +15,17 @@ const ETIQUETA_METODO: Record<MetodoPago, string> = {
   TRANSFERENCIA: 'Transferencia',
   QR: 'QR',
 }
+
+const formatoHora = new Intl.DateTimeFormat('es-CO', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'America/Bogota',
+})
+
+type Detalle = 'ventas' | 'inventario' | null
+
 interface Props {
   desde: string
   hasta: string
@@ -26,6 +37,7 @@ export function BarTab({ desde, hasta }: Props) {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [metodoPago, setMetodoPago] = useState<MetodoPago | 'TODOS'>('TODOS')
+  const [detalle, setDetalle] = useState<Detalle>(null)
 
   useEffect(() => {
     let cancelado = false
@@ -56,7 +68,7 @@ export function BarTab({ desde, hasta }: Props) {
     }
   }, [desde, hasta, metodoPago])
 
-  const { itemsBar, ingreso, unidades, topProductos } = useMemo(() => {
+  const { itemsBar, ingreso, unidades, topProductos, ventasDetalle } = useMemo(() => {
     const items = ventas.flatMap((v) =>
       v.items.filter((i) => i.id_producto_bar !== null).map((i) => ({ ...i, venta: v })),
     )
@@ -73,11 +85,43 @@ export function BarTab({ desde, hasta }: Props) {
       .map(([nombre, datos]) => ({ nombre, ...datos }))
       .sort((a, b) => b.cantidad - a.cantidad)
       .slice(0, 8)
-    return { itemsBar: items, ingreso: ingresoTotal, unidades: unidadesTotal, topProductos: top }
+
+    const porVenta = new Map<number, { venta: Venta; monto: number; productos: string[] }>()
+    for (const item of items) {
+      const actual = porVenta.get(item.venta.id_venta) ?? {
+        venta: item.venta,
+        monto: 0,
+        productos: [],
+      }
+      actual.monto += item.cantidad * item.precio_unitario
+      actual.productos.push(`${item.cantidad}× ${item.nombre_producto}`)
+      porVenta.set(item.venta.id_venta, actual)
+    }
+    const detalleVentas = Array.from(porVenta.values()).sort(
+      (a, b) => new Date(b.venta.creado_en).getTime() - new Date(a.venta.creado_en).getTime(),
+    )
+
+    return {
+      itemsBar: items,
+      ingreso: ingresoTotal,
+      unidades: unidadesTotal,
+      topProductos: top,
+      ventasDetalle: detalleVentas,
+    }
   }, [ventas])
 
   const stockBajo = productos.filter((p) => p.activo && p.stock <= p.umbral_stock_bajo)
   const valorInventario = productos.reduce((suma, p) => suma + p.stock * (p.precio_costo ?? 0), 0)
+  const inventarioOrdenado = useMemo(
+    () =>
+      [...productos].sort((a, b) => {
+        const bajoA = a.activo && a.stock <= a.umbral_stock_bajo
+        const bajoB = b.activo && b.stock <= b.umbral_stock_bajo
+        if (bajoA !== bajoB) return bajoA ? -1 : 1
+        return a.nombre.localeCompare(b.nombre)
+      }),
+    [productos],
+  )
 
   const descargar = async () => {
     if (itemsBar.length === 0) {
@@ -125,19 +169,32 @@ export function BarTab({ desde, hasta }: Props) {
           label="Ingresos"
           valor={formatoMoneda.format(ingreso)}
           sub={desde || hasta ? 'En el rango seleccionado' : 'Historico completo'}
+          activo={detalle === 'ventas'}
+          onClick={() => setDetalle(detalle === 'ventas' ? null : 'ventas')}
         />
-        <StatCard icon={Beer} label="Unidades vendidas" valor={unidades} sub="En el rango" />
+        <StatCard
+          icon={Beer}
+          label="Unidades vendidas"
+          valor={unidades}
+          sub="En el rango"
+          activo={detalle === 'ventas'}
+          onClick={() => setDetalle(detalle === 'ventas' ? null : 'ventas')}
+        />
         <StatCard
           icon={TriangleAlert}
           label="Stock bajo"
           valor={stockBajo.length}
           sub="Productos activos por debajo del umbral"
+          activo={detalle === 'inventario'}
+          onClick={() => setDetalle(detalle === 'inventario' ? null : 'inventario')}
         />
         <StatCard
           icon={Package}
           label="Valor de inventario"
           valor={formatoMoneda.format(valorInventario)}
           sub="Stock actual x costo"
+          activo={detalle === 'inventario'}
+          onClick={() => setDetalle(detalle === 'inventario' ? null : 'inventario')}
         />
       </div>
 
@@ -156,6 +213,87 @@ export function BarTab({ desde, hasta }: Props) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {detalle === 'ventas' && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h2 className="mb-3 font-serif text-base font-semibold text-foreground">
+            Ventas de bar · {ventasDetalle.length} en el rango
+          </h2>
+          {ventasDetalle.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin ventas en este filtro.</p>
+          ) : (
+            <ul className="max-h-96 space-y-1.5 overflow-y-auto text-sm">
+              {ventasDetalle.map(({ venta, monto, productos: nombres }) => (
+                <li
+                  key={venta.id_venta}
+                  className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">
+                      {venta.origen === 'MESA'
+                        ? (venta.nombre_mesa ?? 'Mesa')
+                        : venta.origen === 'MOSTRADOR'
+                          ? 'Mostrador'
+                          : venta.origen}
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {formatoHora.format(new Date(venta.creado_en))} ·{' '}
+                        {ETIQUETA_METODO[venta.metodo_pago]}
+                      </span>
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {nombres.join(', ')}
+                    </p>
+                  </div>
+                  <span className="shrink-0 font-semibold text-foreground">
+                    {formatoMoneda.format(monto)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {detalle === 'inventario' && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h2 className="mb-3 font-serif text-base font-semibold text-foreground">
+            Inventario de bar · {productos.length} productos
+          </h2>
+          {inventarioOrdenado.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay productos registrados.</p>
+          ) : (
+            <ul className="max-h-96 space-y-1 overflow-y-auto text-sm">
+              {inventarioOrdenado.map((p) => {
+                const bajo = p.activo && p.stock <= p.umbral_stock_bajo
+                return (
+                  <li
+                    key={p.id_producto}
+                    className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 odd:bg-muted/40"
+                  >
+                    <span className="truncate text-foreground">
+                      {p.nombre}
+                      {!p.activo && (
+                        <span className="ml-2 text-xs text-muted-foreground">(inactivo)</span>
+                      )}
+                      {bajo && (
+                        <span className="ml-2 text-xs font-medium text-alerta-700">
+                          stock bajo
+                        </span>
+                      )}
+                    </span>
+                    <span className="shrink-0 text-right text-foreground">
+                      <span className="font-medium">{p.stock} und.</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {formatoMoneda.format(p.stock * (p.precio_costo ?? 0))}
+                      </span>
+                    </span>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
         </div>
       )}
 

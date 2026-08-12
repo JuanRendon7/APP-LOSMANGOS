@@ -1,9 +1,19 @@
 import { Coins, Receipt, TrendingUp, UtensilsCrossed } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { listarVentas } from '@/features/caja/api'
 import type { MetodoPago, OrigenVenta, Venta } from '@/features/caja/types'
 import { listarProductosRestaurante } from '@/features/productos/api'
+import type { ProductoRestaurante } from '@/features/productos/types'
 import { descargarExcel } from '@/shared/lib/excel'
 import { Chip, formatoMoneda, StatCard } from './shared'
 
@@ -20,6 +30,16 @@ const ETIQUETA_ORIGEN_VENTA: Record<string, string> = {
   MOSTRADOR: 'Mostrador',
 }
 
+const formatoHora = new Intl.DateTimeFormat('es-CO', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'America/Bogota',
+})
+
+type Detalle = 'ventas' | 'productos' | null
+
 interface Props {
   desde: string
   hasta: string
@@ -27,18 +47,19 @@ interface Props {
 
 export function RestauranteTab({ desde, hasta }: Props) {
   const [ventas, setVentas] = useState<Venta[]>([])
-  const [productosActivos, setProductosActivos] = useState(0)
+  const [productos, setProductos] = useState<ProductoRestaurante[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [metodoPago, setMetodoPago] = useState<MetodoPago | 'TODOS'>('TODOS')
   const [origen, setOrigen] = useState<Extract<OrigenVenta, 'MESA' | 'MOSTRADOR'> | 'TODOS'>('TODOS')
+  const [detalle, setDetalle] = useState<Detalle>(null)
 
   useEffect(() => {
     let cancelado = false
     async function cargar() {
       setCargando(true)
       try {
-        const [ventasDatos, productos] = await Promise.all([
+        const [ventasDatos, productosDatos] = await Promise.all([
           listarVentas({
             desde: desde || undefined,
             hasta: hasta || undefined,
@@ -49,7 +70,7 @@ export function RestauranteTab({ desde, hasta }: Props) {
         ])
         if (cancelado) return
         setVentas(ventasDatos)
-        setProductosActivos(productos.filter((p) => p.activo).length)
+        setProductos(productosDatos)
         setError(null)
       } catch {
         if (!cancelado) setError('No se pudo cargar el resumen de restaurante.')
@@ -63,33 +84,56 @@ export function RestauranteTab({ desde, hasta }: Props) {
     }
   }, [desde, hasta, metodoPago, origen])
 
-  const { itemsRestaurante, ingreso, numeroPedidos, ticketPromedio, topPlatos } = useMemo(() => {
-    const items = ventas.flatMap((v) =>
-      v.items
-        .filter((i) => i.id_producto_restaurante !== null)
-        .map((i) => ({ ...i, venta: v })),
-    )
-    const ingresoTotal = items.reduce((suma, i) => suma + i.cantidad * i.precio_unitario, 0)
-    const pedidos = new Set(items.map((i) => i.venta.id_venta)).size
-    const porProducto = new Map<string, { cantidad: number; ingreso: number }>()
-    for (const item of items) {
-      const actual = porProducto.get(item.nombre_producto) ?? { cantidad: 0, ingreso: 0 }
-      actual.cantidad += item.cantidad
-      actual.ingreso += item.cantidad * item.precio_unitario
-      porProducto.set(item.nombre_producto, actual)
-    }
-    const top = Array.from(porProducto.entries())
-      .map(([nombre, datos]) => ({ nombre, ...datos }))
-      .sort((a, b) => b.ingreso - a.ingreso)
-      .slice(0, 8)
-    return {
-      itemsRestaurante: items,
-      ingreso: ingresoTotal,
-      numeroPedidos: pedidos,
-      ticketPromedio: pedidos > 0 ? Math.round(ingresoTotal / pedidos) : 0,
-      topPlatos: top,
-    }
-  }, [ventas])
+  const productosActivos = useMemo(() => productos.filter((p) => p.activo), [productos])
+
+  const { itemsRestaurante, ingreso, numeroPedidos, ticketPromedio, topPlatos, ventasDetalle } =
+    useMemo(() => {
+      const items = ventas.flatMap((v) =>
+        v.items
+          .filter((i) => i.id_producto_restaurante !== null)
+          .map((i) => ({ ...i, venta: v })),
+      )
+      const ingresoTotal = items.reduce((suma, i) => suma + i.cantidad * i.precio_unitario, 0)
+      const porProducto = new Map<string, { cantidad: number; ingreso: number }>()
+      for (const item of items) {
+        const actual = porProducto.get(item.nombre_producto) ?? { cantidad: 0, ingreso: 0 }
+        actual.cantidad += item.cantidad
+        actual.ingreso += item.cantidad * item.precio_unitario
+        porProducto.set(item.nombre_producto, actual)
+      }
+      const top = Array.from(porProducto.entries())
+        .map(([nombre, datos]) => ({ nombre, ...datos }))
+        .sort((a, b) => b.ingreso - a.ingreso)
+        .slice(0, 8)
+
+      const porVenta = new Map<
+        number,
+        { venta: Venta; monto: number; productos: string[] }
+      >()
+      for (const item of items) {
+        const actual = porVenta.get(item.venta.id_venta) ?? {
+          venta: item.venta,
+          monto: 0,
+          productos: [],
+        }
+        actual.monto += item.cantidad * item.precio_unitario
+        actual.productos.push(`${item.cantidad}× ${item.nombre_producto}`)
+        porVenta.set(item.venta.id_venta, actual)
+      }
+      const detalleVentas = Array.from(porVenta.values()).sort(
+        (a, b) => new Date(b.venta.creado_en).getTime() - new Date(a.venta.creado_en).getTime(),
+      )
+
+      const pedidos = porVenta.size
+      return {
+        itemsRestaurante: items,
+        ingreso: ingresoTotal,
+        numeroPedidos: pedidos,
+        ticketPromedio: pedidos > 0 ? Math.round(ingresoTotal / pedidos) : 0,
+        topPlatos: top,
+        ventasDetalle: detalleVentas,
+      }
+    }, [ventas])
 
   const descargar = async () => {
     if (itemsRestaurante.length === 0) {
@@ -99,6 +143,7 @@ export function RestauranteTab({ desde, hasta }: Props) {
     const filas = itemsRestaurante.map((i) => [
       i.venta.creado_en,
       ETIQUETA_ORIGEN_VENTA[i.venta.origen] ?? i.venta.origen,
+      i.venta.nombre_mesa ?? '',
       i.nombre_producto,
       i.cantidad,
       i.precio_unitario,
@@ -115,6 +160,7 @@ export function RestauranteTab({ desde, hasta }: Props) {
       columnas: [
         { titulo: 'Fecha', formato: 'fechahora' },
         { titulo: 'Origen', ancho: 14 },
+        { titulo: 'Mesa', ancho: 14 },
         { titulo: 'Producto', ancho: 26 },
         { titulo: 'Cantidad', formato: 'entero', totalizar: true },
         { titulo: 'Precio unitario', formato: 'moneda' },
@@ -139,21 +185,95 @@ export function RestauranteTab({ desde, hasta }: Props) {
           label="Ingresos"
           valor={formatoMoneda.format(ingreso)}
           sub={desde || hasta ? 'En el rango seleccionado' : 'Historico completo'}
+          activo={detalle === 'ventas'}
+          onClick={() => setDetalle(detalle === 'ventas' ? null : 'ventas')}
         />
-        <StatCard icon={Receipt} label="Pedidos cobrados" valor={numeroPedidos} sub="Mesa + mostrador" />
+        <StatCard
+          icon={Receipt}
+          label="Pedidos cobrados"
+          valor={numeroPedidos}
+          sub="Mesa + mostrador"
+          activo={detalle === 'ventas'}
+          onClick={() => setDetalle(detalle === 'ventas' ? null : 'ventas')}
+        />
         <StatCard
           icon={TrendingUp}
           label="Ticket promedio"
           valor={formatoMoneda.format(ticketPromedio)}
           sub="Por pedido cobrado"
+          activo={detalle === 'ventas'}
+          onClick={() => setDetalle(detalle === 'ventas' ? null : 'ventas')}
         />
         <StatCard
           icon={UtensilsCrossed}
           label="Productos activos"
-          valor={productosActivos}
+          valor={productosActivos.length}
           sub="En el menu"
+          activo={detalle === 'productos'}
+          onClick={() => setDetalle(detalle === 'productos' ? null : 'productos')}
         />
       </div>
+
+      {detalle === 'ventas' && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h2 className="mb-3 font-serif text-base font-semibold text-foreground">
+            Pedidos cobrados · {ventasDetalle.length} en el rango
+          </h2>
+          {ventasDetalle.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin pedidos cobrados en este filtro.</p>
+          ) : (
+            <ul className="max-h-96 space-y-1.5 overflow-y-auto text-sm">
+              {ventasDetalle.map(({ venta, monto, productos: nombres }) => (
+                <li
+                  key={venta.id_venta}
+                  className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">
+                      {venta.origen === 'MESA' ? (venta.nombre_mesa ?? 'Mesa') : 'Mostrador'}
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {formatoHora.format(new Date(venta.creado_en))} ·{' '}
+                        {ETIQUETA_METODO[venta.metodo_pago]}
+                      </span>
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {nombres.join(', ')}
+                    </p>
+                  </div>
+                  <span className="shrink-0 font-semibold text-foreground">
+                    {formatoMoneda.format(monto)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {detalle === 'productos' && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h2 className="mb-3 font-serif text-base font-semibold text-foreground">
+            Productos activos · {productosActivos.length} en el menu
+          </h2>
+          {productosActivos.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay productos activos.</p>
+          ) : (
+            <ul className="max-h-96 space-y-1 overflow-y-auto text-sm">
+              {productosActivos.map((p) => (
+                <li
+                  key={p.id_producto}
+                  className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 odd:bg-muted/40"
+                >
+                  <span className="truncate text-foreground">{p.nombre}</span>
+                  <span className="shrink-0 font-medium text-foreground">
+                    {formatoMoneda.format(p.precio_venta)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-3">
         <div>
@@ -192,7 +312,7 @@ export function RestauranteTab({ desde, hasta }: Props) {
         ) : (
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={topPlatos} layout="vertical" margin={{ left: 24 }}>
+              <BarChart data={topPlatos} layout="vertical" margin={{ left: 24, right: 32 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }} />
                 <YAxis
@@ -202,7 +322,16 @@ export function RestauranteTab({ desde, hasta }: Props) {
                   tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
                 />
                 <Tooltip
-                  formatter={(valor) => formatoMoneda.format(Number(valor))}
+                  formatter={(valor, nombre) => {
+                    if (nombre === 'ingreso') {
+                      return [formatoMoneda.format(Number(valor)), 'Ingresos']
+                    }
+                    return [valor, nombre]
+                  }}
+                  labelFormatter={(_, payload) => {
+                    const cantidad = payload?.[0]?.payload?.cantidad
+                    return cantidad !== undefined ? `${cantidad} unidades vendidas` : ''
+                  }}
                   contentStyle={{
                     background: 'var(--color-card)',
                     border: '1px solid var(--color-border)',
@@ -210,7 +339,14 @@ export function RestauranteTab({ desde, hasta }: Props) {
                     fontSize: 12,
                   }}
                 />
-                <Bar dataKey="ingreso" name="Ingresos" fill="var(--color-primary)" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="ingreso" name="Ingresos" fill="var(--color-primary)" radius={[0, 6, 6, 0]}>
+                  <LabelList
+                    dataKey="cantidad"
+                    position="right"
+                    formatter={(valor) => `${valor} und.`}
+                    style={{ fill: 'var(--color-muted-foreground)', fontSize: 11 }}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>

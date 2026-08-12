@@ -1,0 +1,8 @@
+# Forzar LF en scripts y archivos de configuracion que Linux ejecuta o parsea
+# directamente (Docker, CI, etc.), sin importar el core.autocrlf del checkout
+# local en Windows. Sin esto, un docker-entrypoint.sh con CRLF rompe el exec
+# del contenedor con un "No such file or directory" enganoso.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+docker-entrypoint.sh text eol=lf

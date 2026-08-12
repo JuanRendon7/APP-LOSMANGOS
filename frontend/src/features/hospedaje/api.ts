@@ -73,3 +73,14 @@ export async function cancelarReserva(idReserva: number): Promise<Reserva> {
   const { data } = await apiClient.post<Reserva>(`/reservas/${idReserva}/cancelar`)
   return data
 }
+
+export async function cambiarHabitacion(
+  idReserva: number,
+  idHabitacionDestino: number,
+): Promise<Reserva> {
+  const { data } = await apiClient.post<Reserva>(
+    `/reservas/${idReserva}/cambiar-habitacion`,
+    { id_habitacion_destino: idHabitacionDestino },
+  )
+  return data
+}

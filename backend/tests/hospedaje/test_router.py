@@ -236,6 +236,59 @@ def test_ciclo_completo_checkin_checkout_actualiza_estado_habitacion(
     assert marcar_disponible.json()["estado"] == "DISPONIBLE"
 
 
+def test_cambiar_habitacion_mueve_ocupacion_y_deja_origen_en_limpieza(
+    client, usuario_admin
+):
+    token = token_para(client, usuario_admin.email)
+    headers = auth_headers(token)
+    hab_origen = _habitacion_por_numero(client, headers, "201")
+    hab_destino = _habitacion_por_numero(client, headers, "202")
+
+    reserva = _crear_reserva(client, headers, hab_origen["id_habitacion"], "1000000020")
+    id_reserva = reserva.json()["id_reserva"]
+    client.post(f"/reservas/{id_reserva}/check-in", headers=headers)
+
+    cambiar = client.post(
+        f"/reservas/{id_reserva}/cambiar-habitacion",
+        headers=headers,
+        json={"id_habitacion_destino": hab_destino["id_habitacion"]},
+    )
+    assert cambiar.status_code == 200, cambiar.text
+    assert cambiar.json()["id_habitacion"] == hab_destino["id_habitacion"]
+
+    origen_actualizada = _habitacion_por_numero(client, headers, "201")
+    destino_actualizada = _habitacion_por_numero(client, headers, "202")
+    assert origen_actualizada["estado"] == "LIMPIEZA"
+    assert destino_actualizada["estado"] == "OCUPADA"
+    assert destino_actualizada["reserva_activa"]["id_reserva"] == id_reserva
+
+
+def test_no_se_puede_cambiar_a_habitacion_ocupada(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    headers = auth_headers(token)
+    hab_origen = _habitacion_por_numero(client, headers, "203")
+    hab_destino = _habitacion_por_numero(client, headers, "204")
+
+    reserva1 = _crear_reserva(
+        client, headers, hab_origen["id_habitacion"], "1000000021"
+    )
+    id_reserva1 = reserva1.json()["id_reserva"]
+    client.post(f"/reservas/{id_reserva1}/check-in", headers=headers)
+
+    reserva2 = _crear_reserva(
+        client, headers, hab_destino["id_habitacion"], "1000000022"
+    )
+    id_reserva2 = reserva2.json()["id_reserva"]
+    client.post(f"/reservas/{id_reserva2}/check-in", headers=headers)
+
+    cambiar = client.post(
+        f"/reservas/{id_reserva1}/cambiar-habitacion",
+        headers=headers,
+        json={"id_habitacion_destino": hab_destino["id_habitacion"]},
+    )
+    assert cambiar.status_code == 422
+
+
 def test_no_se_puede_marcar_ocupada_manualmente(client, usuario_admin):
     token = token_para(client, usuario_admin.email)
     headers = auth_headers(token)

@@ -209,6 +209,37 @@ class HospedajeService:
         habitacion.estado = "LIMPIEZA"
         return reserva
 
+    def cambiar_habitacion(
+        self, id_reserva: int, id_habitacion_destino: int
+    ) -> Reserva:
+        reserva = self.obtener_reserva(id_reserva)
+        if reserva.estado != "CHECK_IN":
+            raise BusinessRuleError(
+                "Solo se puede cambiar de habitacion una reserva con check-in activo"
+            )
+        if id_habitacion_destino == reserva.id_habitacion:
+            raise BusinessRuleError("La reserva ya esta en esa habitacion")
+        habitacion_destino = self.repository.obtener_habitacion(id_habitacion_destino)
+        if habitacion_destino is None:
+            raise NotFoundError("Habitacion no encontrada")
+        if habitacion_destino.estado != "DISPONIBLE":
+            raise BusinessRuleError("La habitacion destino no esta disponible")
+        if self.repository.existe_solapamiento(
+            id_habitacion_destino,
+            reserva.fecha_checkin_prevista,
+            reserva.fecha_checkout_prevista,
+            excluir_id_reserva=id_reserva,
+        ):
+            raise ConflictError(
+                "La habitacion destino ya tiene una reserva en ese rango de fechas"
+            )
+        habitacion_origen = self.repository.obtener_habitacion(reserva.id_habitacion)
+        reserva.id_habitacion = id_habitacion_destino
+        habitacion_destino.estado = "OCUPADA"
+        if habitacion_origen is not None:
+            habitacion_origen.estado = "LIMPIEZA"
+        return reserva
+
     def cancelar_reserva(self, id_reserva: int) -> Reserva:
         reserva = self.obtener_reserva(id_reserva)
         if reserva.estado != "RESERVADA":

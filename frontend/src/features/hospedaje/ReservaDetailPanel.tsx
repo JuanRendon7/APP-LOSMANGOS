@@ -6,7 +6,7 @@ import { useTurnoCobro } from '@/features/caja/useTurnoCobro'
 import { ConsumoPanel } from '@/features/consumo/ConsumoPanel'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { DevueltaEfectivo } from '@/shared/ui/DevueltaEfectivo'
-import { cancelarReserva, checkIn, checkOut, listarReservas } from './api'
+import { cambiarHabitacion, cancelarReserva, checkIn, checkOut, listarReservas } from './api'
 import type { Habitacion, Reserva } from './types'
 
 const METODOS: MetodoPago[] = ['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'QR']
@@ -25,6 +25,7 @@ const formatoMoneda = new Intl.NumberFormat('es-CO', {
 
 interface Props {
   habitacion: Habitacion
+  habitacionesDisponibles: Habitacion[]
   refreshToken: number
   onCerrar: () => void
   onCambiarEstado: (estado: string) => void
@@ -34,6 +35,7 @@ interface Props {
 
 export function ReservaDetailPanel({
   habitacion,
+  habitacionesDisponibles,
   refreshToken,
   onCerrar,
   onCambiarEstado,
@@ -47,6 +49,7 @@ export function ReservaDetailPanel({
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO')
   const [cobrando, setCobrando] = useState(false)
   const [totalPendienteOcupada, setTotalPendienteOcupada] = useState(0)
+  const [habitacionDestino, setHabitacionDestino] = useState('')
   const { turnos, idTurno, setIdTurno } = useTurnoCobro()
 
   const cargarProximas = useCallback(async () => {
@@ -108,6 +111,21 @@ export function ReservaDetailPanel({
       await onActualizado()
     } catch {
       setError('No se pudo hacer check-out.')
+    } finally {
+      setCobrando(false)
+    }
+  }
+
+  const manejarCambiarHabitacion = async () => {
+    if (!habitacion.reserva_activa || !habitacionDestino) return
+    setError(null)
+    setCobrando(true)
+    try {
+      await cambiarHabitacion(habitacion.reserva_activa.id_reserva, Number(habitacionDestino))
+      setHabitacionDestino('')
+      await onActualizado()
+    } catch {
+      setError('No se pudo cambiar de habitacion.')
     } finally {
       setCobrando(false)
     }
@@ -202,6 +220,29 @@ export function ReservaDetailPanel({
                 className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50"
               >
                 Hacer check-out
+              </button>
+            </div>
+          )}
+          {puedeEditarReservas && habitacionesDisponibles.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={habitacionDestino}
+                onChange={(e) => setHabitacionDestino(e.target.value)}
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="">Cambiar a otra habitacion...</option>
+                {habitacionesDisponibles.map((h) => (
+                  <option key={h.id_habitacion} value={h.id_habitacion}>
+                    {h.numero} · {h.tipo}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={manejarCambiarHabitacion}
+                disabled={cobrando || !habitacionDestino}
+                className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-secondary disabled:opacity-50"
+              >
+                Cambiar de habitacion
               </button>
             </div>
           )}

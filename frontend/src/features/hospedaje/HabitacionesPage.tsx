@@ -207,6 +207,7 @@ export function HabitacionesPage() {
         <div ref={panelRef} className="scroll-mt-20">
           <ReservaDetailPanel
             habitacion={seleccionada}
+            habitacionesDisponibles={habitaciones.filter((h) => h.estado === 'DISPONIBLE')}
             refreshToken={refreshToken}
             onCerrar={() => setIdSeleccionada(null)}
             onCambiarEstado={(estado) => cambiarEstado(seleccionada, estado)}

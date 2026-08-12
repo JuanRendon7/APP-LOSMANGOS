@@ -13,6 +13,7 @@ from src.hospedaje.schemas import (
     HabitacionResponse,
     HabitacionUpdate,
     HuespedResponse,
+    ReservaCambiarHabitacion,
     ReservaCreate,
     ReservaResponse,
     ReservaUpdate,
@@ -280,6 +281,38 @@ def check_out(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except BusinessRuleError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    db.refresh(reserva)
+    return _reserva_response(reserva)
+
+
+@reservas_router.post(
+    "/{id_reserva}/cambiar-habitacion", response_model=ReservaResponse
+)
+def cambiar_habitacion(
+    id_reserva: int,
+    datos: ReservaCambiarHabitacion,
+    db: Session = Depends(get_db),
+    _: UsuarioActual = Depends(requiere_permiso("RESERVAS", "EDITAR")),
+    servicio: HospedajeService = Depends(get_hospedaje_service),
+):
+    try:
+        reserva = servicio.cambiar_habitacion(id_reserva, datos.id_habitacion_destino)
+        db.commit()
+    except NotFoundError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except ConflictError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(exc)
         ) from exc
     except BusinessRuleError as exc:
         db.rollback()

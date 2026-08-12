@@ -74,3 +74,7 @@ class ReservaUpdate(BaseModel):
     fecha_checkin_prevista: date | None = None
     fecha_checkout_prevista: date | None = None
     precio_total: int | None = Field(default=None, ge=0)
+
+
+class ReservaCambiarHabitacion(BaseModel):
+    id_habitacion_destino: int

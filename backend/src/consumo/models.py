@@ -1,5 +1,7 @@
+from datetime import datetime
+
+from sqlalchemy import DateTime, ForeignKey, Integer
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.productos.models import ProductoBar, ProductoRestaurante
@@ -31,6 +33,11 @@ class ConsumoItem(Base, TimestampMixin):
     # queda pendiente por facturar.
     id_venta: Mapped[int | None] = mapped_column(
         ForeignKey("hotel.venta.id_venta"), default=None
+    )
+    # Se llena cuando el item ya se imprimio/envio en una comanda a cocina;
+    # evita repetir en la siguiente comanda algo que ya se preparo.
+    enviado_cocina_en: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), default=None
     )
 
     producto_bar: Mapped[ProductoBar | None] = relationship()

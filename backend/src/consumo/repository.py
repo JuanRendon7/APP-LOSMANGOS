@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -34,6 +36,41 @@ class ConsumoRepository:
     def marcar_facturados(self, items: list[ConsumoItem], id_venta: int) -> None:
         for item in items:
             item.id_venta = id_venta
+
+    def listar_pendientes_comanda(self, id_reserva: int) -> list[ConsumoItem]:
+        stmt = (
+            select(ConsumoItem)
+            .where(
+                ConsumoItem.id_reserva == id_reserva,
+                ConsumoItem.enviado_cocina_en.is_(None),
+            )
+            .options(
+                selectinload(ConsumoItem.producto_bar),
+                selectinload(ConsumoItem.producto_restaurante),
+            )
+            .order_by(ConsumoItem.creado_en)
+        )
+        return list(self.db.scalars(stmt))
+
+    def listar_por_ids(self, ids: list[int]) -> list[ConsumoItem]:
+        if not ids:
+            return []
+        stmt = (
+            select(ConsumoItem)
+            .where(ConsumoItem.id_consumo.in_(ids))
+            .options(
+                selectinload(ConsumoItem.producto_bar),
+                selectinload(ConsumoItem.producto_restaurante),
+            )
+            .order_by(ConsumoItem.creado_en)
+        )
+        return list(self.db.scalars(stmt))
+
+    def marcar_enviados_cocina(
+        self, items: list[ConsumoItem], cuando: datetime
+    ) -> None:
+        for item in items:
+            item.enviado_cocina_en = cuando
 
     def obtener(self, id_consumo: int) -> ConsumoItem | None:
         stmt = (

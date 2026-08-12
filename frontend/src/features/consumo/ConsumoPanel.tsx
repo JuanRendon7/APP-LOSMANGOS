@@ -2,7 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import { listarProductosBar, listarProductosRestaurante } from '@/features/productos/api'
 import type { ProductoBar, ProductoRestaurante } from '@/features/productos/types'
 import { useAuth } from '@/shared/auth/AuthContext'
-import { agregarConsumo, eliminarConsumo, listarConsumo } from './api'
+import {
+  agregarConsumo,
+  eliminarConsumo,
+  enviarComandaConsumo,
+  listarConsumo,
+  mensajeErrorConsumo,
+} from './api'
 import type { ConsumoResumen, OrigenConsumo } from './types'
 
 const formatoMoneda = new Intl.NumberFormat('es-CO', {
@@ -33,6 +39,7 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
   const [cantidad, setCantidad] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [procesando, setProcesando] = useState(false)
+  const [enviandoComanda, setEnviandoComanda] = useState(false)
 
   const puedeCrear = tienePermiso('VENTAS', 'CREAR')
   const puedeEditar = tienePermiso('VENTAS', 'EDITAR')
@@ -92,9 +99,25 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
     }
   }
 
+  const manejarEnviarComanda = async () => {
+    setError(null)
+    setEnviandoComanda(true)
+    try {
+      const comanda = await enviarComandaConsumo(idReserva)
+      const ids = comanda.items.map((item) => item.id_consumo).join(',')
+      window.open(`/reservas/${idReserva}/comanda?items=${ids}`, '_blank')
+      await cargar()
+    } catch (err) {
+      setError(mensajeErrorConsumo(err, 'No se pudo enviar la comanda.'))
+    } finally {
+      setEnviandoComanda(false)
+    }
+  }
+
   if (!resumen) return null
 
   const totalGeneral = precioHospedaje + resumen.total
+  const pendientesComanda = resumen.items.filter((item) => !item.enviado_cocina_en)
 
   return (
     <div className="mt-3 border-t border-border pt-3">
@@ -119,6 +142,17 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
                 <span className="ml-1.5 inline-flex items-center rounded-full bg-exito-100 px-1.5 py-0.5 text-[10px] font-medium text-exito-800">
                   Facturado
                 </span>
+              )}
+              {item.enviado_cocina_en ? (
+                <span className="ml-1.5 inline-flex items-center rounded-full bg-info-100 px-1.5 py-0.5 text-[10px] font-medium text-info-800">
+                  En cocina
+                </span>
+              ) : (
+                item.origen === 'RESTAURANTE' && (
+                  <span className="ml-1.5 inline-flex items-center rounded-full bg-alerta-100 px-1.5 py-0.5 text-[10px] font-medium text-alerta-800">
+                    Sin enviar
+                  </span>
+                )
               )}
             </span>
             <span className="flex shrink-0 items-center gap-2">
@@ -177,6 +211,20 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
             className="rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
             Agregar
+          </button>
+        </div>
+      )}
+
+      {puedeCrear && pendientesComanda.length > 0 && (
+        <div className="mb-2">
+          <button
+            onClick={manejarEnviarComanda}
+            disabled={enviandoComanda}
+            className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {enviandoComanda
+              ? 'Enviando...'
+              : `Enviar comanda (${pendientesComanda.length})`}
           </button>
         </div>
       )}

@@ -70,7 +70,7 @@ class HospedajeRepository:
         stmt = (
             select(Reserva)
             .where(Reserva.id_reserva == id_reserva)
-            .options(selectinload(Reserva.huesped))
+            .options(selectinload(Reserva.huesped), selectinload(Reserva.habitacion))
         )
         return self.db.scalar(stmt)
 

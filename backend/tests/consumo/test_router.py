@@ -251,3 +251,128 @@ def test_total_con_items_mixtos_bar_y_restaurante(client, usuario_admin):
     datos = resumen.json()
     assert len(datos["items"]) == 2
     assert datos["total"] == 2 * 5000 + 15000
+
+
+def test_enviar_comanda_marca_pendientes_y_trae_habitacion(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    headers = auth_headers(token)
+    reserva = _crear_reserva_con_checkin(client, headers, "108", "1100000007")
+    producto = _crear_producto_restaurante(client, headers, "Arepa")
+
+    client.post(
+        "/consumo",
+        headers=headers,
+        json={
+            "id_reserva": reserva["id_reserva"],
+            "origen": "RESTAURANTE",
+            "id_producto": producto["id_producto"],
+            "cantidad": 2,
+        },
+    )
+
+    comanda = client.post(
+        f"/consumo/reserva/{reserva['id_reserva']}/comanda", headers=headers
+    )
+    assert comanda.status_code == 200, comanda.text
+    datos = comanda.json()
+    assert datos["numero_habitacion"] == "108"
+    assert datos["nombre_huesped"] == "Huesped Consumo"
+    assert len(datos["items"]) == 1
+    assert datos["items"][0]["nombre_producto"] == "Arepa"
+    assert datos["items"][0]["enviado_cocina_en"] is not None
+
+    resumen = client.get(
+        "/consumo", headers=headers, params={"id_reserva": reserva["id_reserva"]}
+    )
+    assert resumen.json()["items"][0]["enviado_cocina_en"] is not None
+
+
+def test_enviar_comanda_sin_pendientes_falla(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    headers = auth_headers(token)
+    reserva = _crear_reserva_con_checkin(client, headers, "201", "1100000008")
+
+    resp = client.post(
+        f"/consumo/reserva/{reserva['id_reserva']}/comanda", headers=headers
+    )
+    assert resp.status_code == 422
+
+
+def test_enviar_comanda_no_repite_items_ya_enviados(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    headers = auth_headers(token)
+    reserva = _crear_reserva_con_checkin(client, headers, "202", "1100000009")
+    producto = _crear_producto_restaurante(client, headers, "Jugo")
+
+    client.post(
+        "/consumo",
+        headers=headers,
+        json={
+            "id_reserva": reserva["id_reserva"],
+            "origen": "RESTAURANTE",
+            "id_producto": producto["id_producto"],
+            "cantidad": 1,
+        },
+    )
+    primera = client.post(
+        f"/consumo/reserva/{reserva['id_reserva']}/comanda", headers=headers
+    )
+    assert primera.status_code == 200, primera.text
+    assert len(primera.json()["items"]) == 1
+
+    # Sin nada nuevo, no debe volver a mandar lo ya enviado.
+    segunda = client.post(
+        f"/consumo/reserva/{reserva['id_reserva']}/comanda", headers=headers
+    )
+    assert segunda.status_code == 422
+
+    client.post(
+        "/consumo",
+        headers=headers,
+        json={
+            "id_reserva": reserva["id_reserva"],
+            "origen": "RESTAURANTE",
+            "id_producto": producto["id_producto"],
+            "cantidad": 1,
+        },
+    )
+    tercera = client.post(
+        f"/consumo/reserva/{reserva['id_reserva']}/comanda", headers=headers
+    )
+    assert tercera.status_code == 200, tercera.text
+    assert len(tercera.json()["items"]) == 1
+
+
+def test_obtener_comanda_por_ids(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    headers = auth_headers(token)
+    reserva = _crear_reserva_con_checkin(client, headers, "203", "1100000010")
+    producto = _crear_producto_restaurante(client, headers, "Cafe")
+
+    crear = client.post(
+        "/consumo",
+        headers=headers,
+        json={
+            "id_reserva": reserva["id_reserva"],
+            "origen": "RESTAURANTE",
+            "id_producto": producto["id_producto"],
+            "cantidad": 1,
+        },
+    )
+    id_consumo = crear.json()["id_consumo"]
+
+    enviar = client.post(
+        f"/consumo/reserva/{reserva['id_reserva']}/comanda", headers=headers
+    )
+    assert enviar.status_code == 200
+
+    obtener = client.get(
+        f"/consumo/reserva/{reserva['id_reserva']}/comanda",
+        headers=headers,
+        params={"ids": str(id_consumo)},
+    )
+    assert obtener.status_code == 200, obtener.text
+    datos = obtener.json()
+    assert datos["numero_habitacion"] == "203"
+    assert len(datos["items"]) == 1
+    assert datos["items"][0]["id_consumo"] == id_consumo

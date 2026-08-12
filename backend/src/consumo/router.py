@@ -6,6 +6,7 @@ from src.auth.schemas import UsuarioActual
 from src.consumo.dependencies import get_consumo_service
 from src.consumo.models import ConsumoItem
 from src.consumo.schemas import (
+    ComandaConsumoResponse,
     ConsumoItemCreate,
     ConsumoItemResponse,
     ConsumoResumenResponse,
@@ -26,6 +27,7 @@ def _item_response(item: ConsumoItem) -> ConsumoItemResponse:
         cantidad=item.cantidad,
         precio_unitario=item.precio_unitario,
         facturado=item.id_venta is not None,
+        enviado_cocina_en=item.enviado_cocina_en,
     )
 
 
@@ -86,3 +88,59 @@ def eliminar_consumo(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc
+
+
+@router.post("/reserva/{id_reserva}/comanda", response_model=ComandaConsumoResponse)
+def enviar_comanda(
+    id_reserva: int,
+    db: Session = Depends(get_db),
+    _: UsuarioActual = Depends(requiere_permiso("VENTAS", "CREAR")),
+    servicio: ConsumoService = Depends(get_consumo_service),
+):
+    try:
+        reserva, items = servicio.enviar_comanda(id_reserva)
+        db.commit()
+    except NotFoundError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    except BusinessRuleError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    for item in items:
+        db.refresh(item)
+    return ComandaConsumoResponse(
+        numero_habitacion=reserva.habitacion.numero,
+        nombre_huesped=reserva.huesped.nombre,
+        items=[_item_response(i) for i in items],
+    )
+
+
+@router.get("/reserva/{id_reserva}/comanda", response_model=ComandaConsumoResponse)
+def obtener_comanda(
+    id_reserva: int,
+    ids: str = Query(...),
+    servicio: ConsumoService = Depends(get_consumo_service),
+    _: UsuarioActual = Depends(requiere_permiso("VENTAS", "VER")),
+):
+    try:
+        id_lista = [int(valor) for valor in ids.split(",") if valor]
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="El parametro ids es invalido",
+        ) from exc
+    try:
+        reserva, items = servicio.obtener_comanda(id_reserva, id_lista)
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+    return ComandaConsumoResponse(
+        numero_habitacion=reserva.habitacion.numero,
+        nombre_huesped=reserva.huesped.nombre,
+        items=[_item_response(i) for i in items],
+    )

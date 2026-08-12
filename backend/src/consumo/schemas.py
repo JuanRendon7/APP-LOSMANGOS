@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -16,6 +18,7 @@ class ConsumoItemResponse(BaseModel):
     cantidad: int
     precio_unitario: int
     facturado: bool
+    enviado_cocina_en: datetime | None
 
     model_config = {"from_attributes": True}
 
@@ -23,3 +26,9 @@ class ConsumoItemResponse(BaseModel):
 class ConsumoResumenResponse(BaseModel):
     items: list[ConsumoItemResponse]
     total: int
+
+
+class ComandaConsumoResponse(BaseModel):
+    numero_habitacion: str
+    nombre_huesped: str
+    items: list[ConsumoItemResponse]

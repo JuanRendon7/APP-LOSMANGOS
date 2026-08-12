@@ -3,6 +3,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { CajaPage } from '@/features/caja/CajaPage'
 import { VenderPage } from '@/features/caja/VenderPage'
 import { ConfiguracionPage } from '@/features/configuracion/ConfiguracionPage'
+import { ComandaHabitacionPage } from '@/features/hospedaje/ComandaHabitacionPage'
 import { HabitacionesCatalogoPage } from '@/features/hospedaje/HabitacionesCatalogoPage'
 import { HabitacionesPage } from '@/features/hospedaje/HabitacionesPage'
 import { LiquidacionesPage } from '@/features/liquidaciones/LiquidacionesPage'
@@ -173,6 +174,14 @@ export default function App() {
             element={
               <RequiereSesion>
                 <ComandaPage />
+              </RequiereSesion>
+            }
+          />
+          <Route
+            path="/reservas/:id/comanda"
+            element={
+              <RequiereSesion>
+                <ComandaHabitacionPage />
               </RequiereSesion>
             }
           />

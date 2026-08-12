@@ -1,6 +1,9 @@
+from datetime import UTC, datetime
+
 from src.consumo.models import ConsumoItem
 from src.consumo.repository import ConsumoRepository
 from src.consumo.schemas import ConsumoItemCreate
+from src.hospedaje.models import Reserva
 from src.hospedaje.repository import HospedajeRepository
 from src.productos.service import ProductosService
 from src.shared.exceptions import BusinessRuleError, NotFoundError
@@ -74,3 +77,26 @@ class ConsumoService:
                 item.id_producto_bar, item.cantidad
             )
         self.repository.eliminar(item)
+
+    def enviar_comanda(self, id_reserva: int) -> tuple[Reserva, list[ConsumoItem]]:
+        reserva = self.hospedaje_repository.obtener_reserva(id_reserva)
+        if reserva is None:
+            raise NotFoundError("Reserva no encontrada")
+        pendientes = self.repository.listar_pendientes_comanda(id_reserva)
+        if not pendientes:
+            raise BusinessRuleError("No hay productos pendientes de enviar a cocina")
+        self.repository.marcar_enviados_cocina(pendientes, datetime.now(UTC))
+        return reserva, pendientes
+
+    def obtener_comanda(
+        self, id_reserva: int, ids: list[int]
+    ) -> tuple[Reserva, list[ConsumoItem]]:
+        reserva = self.hospedaje_repository.obtener_reserva(id_reserva)
+        if reserva is None:
+            raise NotFoundError("Reserva no encontrada")
+        items = [
+            item
+            for item in self.repository.listar_por_ids(ids)
+            if item.id_reserva == id_reserva
+        ]
+        return reserva, items

@@ -15,9 +15,16 @@ export interface ConsumoItem {
   cantidad: number
   precio_unitario: number
   facturado: boolean
+  enviado_cocina_en: string | null
 }
 
 export interface ConsumoResumen {
   items: ConsumoItem[]
   total: number
+}
+
+export interface ComandaConsumo {
+  numero_habitacion: string
+  nombre_huesped: string
+  items: ConsumoItem[]
 }

@@ -7,6 +7,7 @@ import { listarProductosBar, listarProductosRestaurante } from '@/features/produ
 import type { ProductoBar, ProductoRestaurante } from '@/features/productos/types'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { BuscadorProducto } from '@/shared/ui/BuscadorProducto'
+import { DevueltaEfectivo } from '@/shared/ui/DevueltaEfectivo'
 import {
   agregarItem,
   avanzarEstado,
@@ -232,7 +233,7 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
             <input
               type="number"
               min={0}
-              step={500}
+              step={1}
               placeholder={
                 productoSeleccionado
                   ? `Precio: ${formatoMoneda.format(productoSeleccionado.precio_venta)}`
@@ -303,6 +304,7 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
                 </option>
               ))}
             </select>
+            {metodoPago === 'EFECTIVO' && <DevueltaEfectivo total={pedido.total} />}
             <button
               onClick={() =>
                 conManejoDeError(() =>

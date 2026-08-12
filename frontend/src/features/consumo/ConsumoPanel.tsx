@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { listarProductosBar, listarProductosRestaurante } from '@/features/productos/api'
 import type { ProductoBar, ProductoRestaurante } from '@/features/productos/types'
 import { useAuth } from '@/shared/auth/AuthContext'
@@ -25,9 +25,16 @@ const ETIQUETA_ORIGEN: Record<OrigenConsumo, string> = {
 interface Props {
   idReserva: number
   precioHospedaje: number
+  hospedajePagado?: boolean
+  onTotalPendienteCambio?: (total: number) => void
 }
 
-export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
+export function ConsumoPanel({
+  idReserva,
+  precioHospedaje,
+  hospedajePagado = false,
+  onTotalPendienteCambio,
+}: Props) {
   const { tienePermiso } = useAuth()
   const [resumen, setResumen] = useState<ConsumoResumen | null>(null)
   const [productosBar, setProductosBar] = useState<ProductoBar[]>([])
@@ -116,6 +123,19 @@ export function ConsumoPanel({ idReserva, precioHospedaje }: Props) {
       setEnviandoComanda(false)
     }
   }
+
+  const consumoPendiente = resumen?.items.filter((item) => !item.facturado) ?? []
+  const totalConsumoPendiente = consumoPendiente.reduce(
+    (acc, item) => acc + item.cantidad * item.precio_unitario,
+    0,
+  )
+  const totalPendiente = (hospedajePagado ? 0 : precioHospedaje) + totalConsumoPendiente
+  const onTotalPendienteCambioRef = useRef(onTotalPendienteCambio)
+  onTotalPendienteCambioRef.current = onTotalPendienteCambio
+
+  useEffect(() => {
+    onTotalPendienteCambioRef.current?.(totalPendiente)
+  }, [totalPendiente])
 
   if (!resumen) return null
 

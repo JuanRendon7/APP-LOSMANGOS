@@ -5,6 +5,7 @@ import type { MetodoPago } from '@/features/caja/types'
 import { useTurnoCobro } from '@/features/caja/useTurnoCobro'
 import { ConsumoPanel } from '@/features/consumo/ConsumoPanel'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { DevueltaEfectivo } from '@/shared/ui/DevueltaEfectivo'
 import { cancelarReserva, checkIn, checkOut, listarReservas } from './api'
 import type { Habitacion, Reserva } from './types'
 
@@ -45,6 +46,7 @@ export function ReservaDetailPanel({
   const [error, setError] = useState<string | null>(null)
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO')
   const [cobrando, setCobrando] = useState(false)
+  const [totalPendienteOcupada, setTotalPendienteOcupada] = useState(0)
   const { turnos, idTurno, setIdTurno } = useTurnoCobro()
 
   const cargarProximas = useCallback(async () => {
@@ -186,6 +188,7 @@ export function ReservaDetailPanel({
                   </option>
                 ))}
               </select>
+              {metodoPago === 'EFECTIVO' && <DevueltaEfectivo total={totalPendienteOcupada} />}
               <button
                 onClick={() => manejarCobrar(habitacion.reserva_activa!.id_reserva)}
                 disabled={cobrando}
@@ -205,6 +208,8 @@ export function ReservaDetailPanel({
           <ConsumoPanel
             idReserva={habitacion.reserva_activa.id_reserva}
             precioHospedaje={habitacion.reserva_activa.precio_total}
+            hospedajePagado={habitacion.reserva_activa.pagada}
+            onTotalPendienteCambio={setTotalPendienteOcupada}
           />
         </div>
       )}
@@ -286,7 +291,10 @@ export function ReservaDetailPanel({
                     )}
                   </span>
                   {puedeEditarReservas && (
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      {!reserva.pagada && metodoPago === 'EFECTIVO' && (
+                        <DevueltaEfectivo total={reserva.precio_total} />
+                      )}
                       {!reserva.pagada && (
                         <button
                           onClick={() => manejarCobrar(reserva.id_reserva)}

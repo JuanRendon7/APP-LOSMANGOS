@@ -6,6 +6,7 @@ import type { ProductoBar, ProductoRestaurante } from '@/features/productos/type
 import { useAuth } from '@/shared/auth/AuthContext'
 import { formatoHoraBogota } from '@/shared/lib/tiempo'
 import { BuscadorProducto } from '@/shared/ui/BuscadorProducto'
+import { DevueltaEfectivo } from '@/shared/ui/DevueltaEfectivo'
 import { abrirTurno, deshacerUltimaVenta, listarVentas, mensajeErrorCaja, ventaMostrador } from './api'
 import { SelectorCaja } from './SelectorCaja'
 import type {
@@ -530,6 +531,7 @@ function VentaMostrador({
                 </option>
               ))}
             </select>
+            {metodoPago === 'EFECTIVO' && <DevueltaEfectivo total={total} />}
             <button
               onClick={manejarCobrar}
               disabled={carrito.length === 0 || procesando}

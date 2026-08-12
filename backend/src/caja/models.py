@@ -9,6 +9,7 @@ from src.productos.models import ProductoBar, ProductoRestaurante
 from src.shared.database import Base, TimestampMixin
 
 ESTADOS_TURNO = ["ABIERTO", "CERRADO"]
+TIPOS_TURNO = ["DIURNO", "NOCTURNO"]
 METODOS_PAGO = ["EFECTIVO", "TARJETA", "TRANSFERENCIA", "QR"]
 ORIGENES_VENTA = ["HABITACION", "MESA", "MOSTRADOR"]
 
@@ -21,6 +22,10 @@ class TurnoCaja(Base, TimestampMixin):
     estado: Mapped[str] = mapped_column(
         SAEnum(*ESTADOS_TURNO, name="estado_turno_caja", native_enum=False),
         server_default="ABIERTO",
+    )
+    tipo: Mapped[str] = mapped_column(
+        SAEnum(*TIPOS_TURNO, name="tipo_turno_caja", native_enum=False),
+        server_default="DIURNO",
     )
     monto_apertura: Mapped[int] = mapped_column(Integer)
     monto_cierre_real: Mapped[int | None] = mapped_column(Integer, default=None)

@@ -1,6 +1,14 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
+from zoneinfo import ZoneInfo
 
-from src.caja.models import METODOS_PAGO, Gasto, TurnoCaja, Venta, VentaItem
+from src.caja.models import (
+    METODOS_PAGO,
+    TIPOS_TURNO,
+    Gasto,
+    TurnoCaja,
+    Venta,
+    VentaItem,
+)
 from src.caja.repository import CajaRepository
 from src.caja.schemas import GastoCreate, GastoUpdate, VentaMostradorItemInput
 from src.consumo.repository import ConsumoRepository
@@ -8,6 +16,13 @@ from src.hospedaje.service import HospedajeService
 from src.productos.service import ProductosService
 from src.restaurante.service import RestauranteService
 from src.shared.exceptions import BusinessRuleError, NotFoundError
+
+# El turno nocturno solo puede abrirse dentro de este rango horario (hora de
+# Colombia); no cierra automaticamente al llegar la hora limite, solo se
+# restringe cuando se puede ABRIR uno nuevo.
+ZONA_HOTEL = ZoneInfo("America/Bogota")
+HORA_INICIO_NOCTURNO = time(18, 0)
+HORA_FIN_NOCTURNO = time(6, 0)
 
 
 class CajaService:
@@ -27,8 +42,11 @@ class CajaService:
 
     # Turnos
 
-    def turno_actual(self) -> TurnoCaja | None:
-        return self.repository.obtener_turno_abierto()
+    def turno_actual(self, tipo: str) -> TurnoCaja | None:
+        return self.repository.obtener_turno_abierto(tipo)
+
+    def turnos_abiertos(self) -> list[TurnoCaja]:
+        return self.repository.listar_turnos_abiertos()
 
     def listar_turnos(
         self,
@@ -36,17 +54,31 @@ class CajaService:
         estado: str | None,
         desde: date | None = None,
         hasta: date | None = None,
+        tipo: str | None = None,
     ) -> list[TurnoCaja]:
-        return self.repository.listar_turnos(id_usuario, estado, desde, hasta)
+        return self.repository.listar_turnos(id_usuario, estado, desde, hasta, tipo)
 
-    def abrir_turno(self, id_usuario: int, monto_apertura: int) -> TurnoCaja:
-        turno_abierto = self.repository.obtener_turno_abierto()
+    def _dentro_horario_nocturno(self) -> bool:
+        ahora = datetime.now(ZONA_HOTEL).time()
+        return ahora >= HORA_INICIO_NOCTURNO or ahora < HORA_FIN_NOCTURNO
+
+    def abrir_turno(self, id_usuario: int, monto_apertura: int, tipo: str) -> TurnoCaja:
+        if tipo not in TIPOS_TURNO:
+            raise BusinessRuleError(f"Tipo de turno '{tipo}' invalido")
+        if tipo == "NOCTURNO" and not self._dentro_horario_nocturno():
+            raise BusinessRuleError(
+                "El turno nocturno solo puede abrirse entre las 6:00 pm y las 6:00 am"
+            )
+        turno_abierto = self.repository.obtener_turno_abierto(tipo)
         if turno_abierto is not None:
             raise BusinessRuleError(
-                f"Ya hay una caja abierta (por {turno_abierto.usuario.nombre}). "
-                "Debe cerrarse antes de abrir una nueva."
+                f"Ya hay una caja {tipo.lower()} abierta (por "
+                f"{turno_abierto.usuario.nombre}). Debe cerrarse antes de "
+                "abrir una nueva."
             )
-        turno = TurnoCaja(id_usuario=id_usuario, monto_apertura=monto_apertura)
+        turno = TurnoCaja(
+            id_usuario=id_usuario, monto_apertura=monto_apertura, tipo=tipo
+        )
         return self.repository.crear_turno(turno)
 
     def cerrar_turno(self, id_turno: int, monto_cierre_real: int) -> TurnoCaja:
@@ -60,11 +92,25 @@ class CajaService:
         turno.fecha_cierre = datetime.now(UTC)
         return turno
 
-    def _turno_abierto(self) -> TurnoCaja:
-        turno = self.repository.obtener_turno_abierto()
-        if turno is None:
+    def _resolver_turno(self, id_turno: int | None) -> TurnoCaja:
+        """Decide sobre que turno abierto se registra un movimiento. Si hay
+        un unico turno abierto (el caso normal), se usa ese sin preguntar. Si
+        hay mas de uno abierto a la vez (diurno y nocturno simultaneos), el
+        llamador debe indicar explicitamente id_turno."""
+        abiertos = self.repository.listar_turnos_abiertos()
+        if not abiertos:
             raise BusinessRuleError("No hay una caja abierta, abrela primero")
-        return turno
+        if id_turno is not None:
+            turno = next((t for t in abiertos if t.id_turno == id_turno), None)
+            if turno is None:
+                raise BusinessRuleError("La caja indicada no esta abierta")
+            return turno
+        if len(abiertos) > 1:
+            raise BusinessRuleError(
+                "Hay mas de una caja abierta; debes indicar a cual "
+                "registrar el movimiento"
+            )
+        return abiertos[0]
 
     # Gastos
 
@@ -72,7 +118,7 @@ class CajaService:
         return self.repository.listar_gastos(id_turno)
 
     def registrar_gasto(self, id_usuario: int, datos: GastoCreate) -> Gasto:
-        turno = self._turno_abierto()
+        turno = self._resolver_turno(datos.id_turno)
         gasto = Gasto(
             id_turno_caja=turno.id_turno,
             concepto=datos.concepto,
@@ -116,10 +162,14 @@ class CajaService:
             raise BusinessRuleError(f"Metodo de pago '{metodo_pago}' invalido")
 
     def cobrar_habitacion(
-        self, id_usuario: int, id_reserva: int, metodo_pago: str
+        self,
+        id_usuario: int,
+        id_reserva: int,
+        metodo_pago: str,
+        id_turno: int | None = None,
     ) -> Venta:
         self._validar_metodo_pago(metodo_pago)
-        turno = self._turno_abierto()
+        turno = self._resolver_turno(id_turno)
         reserva = self.hospedaje_service.obtener_reserva(id_reserva)
         if reserva.estado == "CANCELADA":
             raise BusinessRuleError("La reserva esta cancelada")
@@ -141,9 +191,15 @@ class CajaService:
         self.consumo_repository.marcar_facturados(consumo_pendiente, venta.id_venta)
         return venta
 
-    def cobrar_pedido(self, id_usuario: int, id_pedido: int, metodo_pago: str) -> Venta:
+    def cobrar_pedido(
+        self,
+        id_usuario: int,
+        id_pedido: int,
+        metodo_pago: str,
+        id_turno: int | None = None,
+    ) -> Venta:
         self._validar_metodo_pago(metodo_pago)
-        turno = self._turno_abierto()
+        turno = self._resolver_turno(id_turno)
         pedido = self.restaurante_service.obtener_pedido(id_pedido)
         total = sum(item.cantidad * item.precio_unitario for item in pedido.items)
         if total == 0:
@@ -164,9 +220,10 @@ class CajaService:
         id_usuario: int,
         items: list[VentaMostradorItemInput],
         metodo_pago: str,
+        id_turno: int | None = None,
     ) -> Venta:
         self._validar_metodo_pago(metodo_pago)
-        turno = self._turno_abierto()
+        turno = self._resolver_turno(id_turno)
         if not items:
             raise BusinessRuleError("La venta debe tener al menos un producto")
 
@@ -215,8 +272,8 @@ class CajaService:
         venta.monto = total
         return venta
 
-    def deshacer_ultima_venta(self) -> Venta:
-        turno = self._turno_abierto()
+    def deshacer_ultima_venta(self, id_turno: int | None = None) -> Venta:
+        turno = self._resolver_turno(id_turno)
         ventas = self.repository.listar_ventas(turno.id_turno, None, None)
         if not ventas:
             raise BusinessRuleError("No hay ventas para deshacer en este turno")

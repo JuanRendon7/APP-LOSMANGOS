@@ -5,6 +5,7 @@ import type {
   Gasto,
   MetodoPago,
   OrigenVenta,
+  TipoTurno,
   TurnoCaja,
   Venta,
   VentaMostradorItemInput,
@@ -17,14 +18,25 @@ export function mensajeErrorCaja(err: unknown, fallback: string): string {
   return fallback
 }
 
-export async function obtenerTurnoActual(): Promise<TurnoCaja | null> {
-  const { data } = await apiClient.get<TurnoCaja | null>('/caja/turnos/actual')
+export async function obtenerTurnoActual(tipo: TipoTurno = 'DIURNO'): Promise<TurnoCaja | null> {
+  const { data } = await apiClient.get<TurnoCaja | null>('/caja/turnos/actual', {
+    params: { tipo },
+  })
   return data
 }
 
-export async function abrirTurno(montoApertura: number): Promise<TurnoCaja> {
+export async function listarTurnosAbiertos(): Promise<TurnoCaja[]> {
+  const { data } = await apiClient.get<TurnoCaja[]>('/caja/turnos/abiertos')
+  return data
+}
+
+export async function abrirTurno(
+  montoApertura: number,
+  tipo: TipoTurno = 'DIURNO',
+): Promise<TurnoCaja> {
   const { data } = await apiClient.post<TurnoCaja>('/caja/turnos', {
     monto_apertura: montoApertura,
+    tipo,
   })
   return data
 }
@@ -46,8 +58,16 @@ export async function listarGastos(idTurno: number): Promise<Gasto[]> {
   return data
 }
 
-export async function crearGasto(concepto: string, monto: number): Promise<Gasto> {
-  const { data } = await apiClient.post<Gasto>('/caja/gastos', { concepto, monto })
+export async function crearGasto(
+  concepto: string,
+  monto: number,
+  idTurno?: number,
+): Promise<Gasto> {
+  const { data } = await apiClient.post<Gasto>('/caja/gastos', {
+    concepto,
+    monto,
+    id_turno: idTurno,
+  })
   return data
 }
 
@@ -66,10 +86,12 @@ export async function eliminarGasto(idGasto: number): Promise<void> {
 export async function cobrarHabitacion(
   idReserva: number,
   metodoPago: MetodoPago,
+  idTurno?: number,
 ): Promise<Venta> {
   const { data } = await apiClient.post<Venta>('/caja/ventas/habitacion', {
     id_reserva: idReserva,
     metodo_pago: metodoPago,
+    id_turno: idTurno,
   })
   return data
 }
@@ -77,10 +99,12 @@ export async function cobrarHabitacion(
 export async function cobrarPedido(
   idPedido: number,
   metodoPago: MetodoPago,
+  idTurno?: number,
 ): Promise<Venta> {
   const { data } = await apiClient.post<Venta>('/caja/ventas/pedido', {
     id_pedido: idPedido,
     metodo_pago: metodoPago,
+    id_turno: idTurno,
   })
   return data
 }
@@ -88,10 +112,12 @@ export async function cobrarPedido(
 export async function ventaMostrador(
   items: VentaMostradorItemInput[],
   metodoPago: MetodoPago,
+  idTurno?: number,
 ): Promise<Venta> {
   const { data } = await apiClient.post<Venta>('/caja/ventas/mostrador', {
     items,
     metodo_pago: metodoPago,
+    id_turno: idTurno,
   })
   return data
 }
@@ -115,8 +141,10 @@ export async function listarVentas(params: {
   return data
 }
 
-export async function deshacerUltimaVenta(): Promise<Venta> {
-  const { data } = await apiClient.post<Venta>('/caja/ventas/deshacer-ultima')
+export async function deshacerUltimaVenta(idTurno?: number): Promise<Venta> {
+  const { data } = await apiClient.post<Venta>('/caja/ventas/deshacer-ultima', null, {
+    params: { id_turno: idTurno },
+  })
   return data
 }
 
@@ -125,6 +153,7 @@ export async function listarTurnos(params: {
   estado?: EstadoTurno
   desde?: string
   hasta?: string
+  tipo?: TipoTurno
 }): Promise<TurnoCaja[]> {
   const { data } = await apiClient.get<TurnoCaja[]>('/caja/turnos', {
     params: {
@@ -132,6 +161,7 @@ export async function listarTurnos(params: {
       estado: params.estado,
       desde: params.desde,
       hasta: params.hasta,
+      tipo: params.tipo,
     },
   })
   return data

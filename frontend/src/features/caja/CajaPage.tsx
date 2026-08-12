@@ -5,11 +5,13 @@ import {
   Coins,
   CreditCard,
   LayoutGrid,
+  Moon,
   Percent,
   QrCode,
   Receipt,
   Repeat,
   ShoppingCart,
+  Sun,
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
@@ -36,7 +38,21 @@ import {
   mensajeErrorCaja,
   obtenerTurnoActual,
 } from './api'
-import type { Gasto, OrigenVenta, TurnoCaja, Venta } from './types'
+import type { Gasto, OrigenVenta, TipoTurno, TurnoCaja, Venta } from './types'
+
+const HORA_INICIO_NOCTURNO = 18
+const HORA_FIN_NOCTURNO = 6
+
+function estaEnHorarioNocturno(): boolean {
+  const hora = Number(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Bogota',
+      hour: 'numeric',
+      hour12: false,
+    }).format(new Date()),
+  )
+  return hora >= HORA_INICIO_NOCTURNO || hora < HORA_FIN_NOCTURNO
+}
 
 const formatoMoneda = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -72,6 +88,15 @@ const ICONO_ORIGEN: Record<OrigenVenta, LucideIcon> = {
 }
 
 export function CajaPage() {
+  return (
+    <div className="space-y-8">
+      <CajaTurnoSection tipo="DIURNO" titulo="Caja diurna" />
+      <CajaTurnoSection tipo="NOCTURNO" titulo="Caja nocturna" />
+    </div>
+  )
+}
+
+function CajaTurnoSection({ tipo, titulo }: { tipo: TipoTurno; titulo: string }) {
   const { tienePermiso } = useAuth()
   const [turno, setTurno] = useState<TurnoCaja | null | undefined>(undefined)
   const [gastos, setGastos] = useState<Gasto[]>([])
@@ -88,7 +113,7 @@ export function CajaPage() {
 
   const cargar = useCallback(async () => {
     try {
-      const actual = await obtenerTurnoActual()
+      const actual = await obtenerTurnoActual(tipo)
       setTurno(actual)
       if (actual) {
         const [gastosDatos, ventasDatos] = await Promise.all([
@@ -104,7 +129,7 @@ export function CajaPage() {
     } catch {
       setError('No se pudo cargar el estado de la caja.')
     }
-  }, [])
+  }, [tipo])
 
   useEffect(() => {
     cargar()
@@ -115,14 +140,19 @@ export function CajaPage() {
     return () => clearInterval(id)
   }, [])
 
-  if (turno === undefined) {
-    return <p className="text-sm text-muted-foreground">Cargando...</p>
-  }
-
   return (
     <div className="space-y-4">
+      <h2 className="flex items-center gap-2 font-serif text-xl font-semibold text-foreground">
+        {tipo === 'NOCTURNO' ? (
+          <Moon size={18} className="text-primary" />
+        ) : (
+          <Sun size={18} className="text-primary" />
+        )}
+        {titulo}
+      </h2>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {!turno && ultimoCierre && (
+      {turno === undefined && <p className="text-sm text-muted-foreground">Cargando...</p>}
+      {turno !== undefined && !turno && ultimoCierre && (
         <div className="rounded-lg border border-border bg-card p-4 text-sm">
           <p className="font-medium text-foreground">Caja cerrada.</p>
           <p className="text-muted-foreground">
@@ -132,8 +162,9 @@ export function CajaPage() {
           </p>
         </div>
       )}
-      {!turno && (
+      {turno !== undefined && !turno && (
         <AbrirCajaCard
+          tipo={tipo}
           puedeAbrir={puedeAbrir}
           onAbierta={async () => {
             setUltimoCierre(null)
@@ -171,10 +202,12 @@ export function CajaPage() {
 }
 
 function AbrirCajaCard({
+  tipo,
   puedeAbrir,
   onAbierta,
   setError,
 }: {
+  tipo: TipoTurno
   puedeAbrir: boolean
   onAbierta: () => Promise<void> | void
   setError: (msg: string | null) => void
@@ -185,16 +218,20 @@ function AbrirCajaCard({
   if (!puedeAbrir) {
     return (
       <div className="rounded-lg border border-border bg-card p-4">
-        <p className="text-sm text-muted-foreground">No hay una caja abierta.</p>
+        <p className="text-sm text-muted-foreground">
+          No hay una caja {tipo === 'NOCTURNO' ? 'nocturna' : 'diurna'} abierta.
+        </p>
       </div>
     )
   }
+
+  const fueraDeHorario = tipo === 'NOCTURNO' && !estaEnHorarioNocturno()
 
   const manejarAbrir = async () => {
     setError(null)
     setProcesando(true)
     try {
-      await abrirTurno(monto)
+      await abrirTurno(monto, tipo)
       await onAbierta()
     } catch (err) {
       setError(mensajeErrorCaja(err, 'No se pudo abrir la caja.'))
@@ -206,8 +243,14 @@ function AbrirCajaCard({
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <h3 className="mb-3 flex items-center gap-2 font-serif text-lg font-semibold text-card-foreground">
-        <Wallet size={18} className="text-primary" /> Abrir caja
+        <Wallet size={18} className="text-primary" />
+        Abrir {tipo === 'NOCTURNO' ? 'turno nocturno' : 'caja diurna'}
       </h3>
+      {fueraDeHorario && (
+        <p className="mb-3 text-xs text-muted-foreground">
+          El turno nocturno solo se puede abrir entre las 6:00 pm y las 6:00 am.
+        </p>
+      )}
       <div className="flex flex-wrap items-end gap-2">
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">
@@ -223,7 +266,7 @@ function AbrirCajaCard({
         </div>
         <button
           onClick={manejarAbrir}
-          disabled={procesando}
+          disabled={procesando || fueraDeHorario}
           className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
         >
           Abrir caja
@@ -385,7 +428,7 @@ function GastosCard({
     setError(null)
     setProcesando(true)
     try {
-      await crearGasto(concepto, monto)
+      await crearGasto(concepto, monto, turno.id_turno)
       setConcepto('')
       setMonto(0)
       await onCambio()

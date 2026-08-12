@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { cobrarPedido } from '@/features/caja/api'
+import { SelectorCaja } from '@/features/caja/SelectorCaja'
 import type { MetodoPago } from '@/features/caja/types'
+import { useTurnoCobro } from '@/features/caja/useTurnoCobro'
 import { listarProductosBar, listarProductosRestaurante } from '@/features/productos/api'
 import type { ProductoBar, ProductoRestaurante } from '@/features/productos/types'
 import { useAuth } from '@/shared/auth/AuthContext'
@@ -61,6 +63,7 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [procesando, setProcesando] = useState(false)
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO')
+  const { turnos, idTurno, setIdTurno } = useTurnoCobro()
 
   const puedeEditar = tienePermiso('PEDIDOS', 'EDITAR')
   const puedeCrear = tienePermiso('PEDIDOS', 'CREAR')
@@ -288,6 +291,7 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
         )}
         {puedeEditar && pedido.estado !== 'CERRADO' && pedido.items.length > 0 && (
           <>
+            <SelectorCaja turnos={turnos} idTurno={idTurno} onChange={setIdTurno} />
             <select
               value={metodoPago}
               onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
@@ -301,7 +305,9 @@ export function PedidoPanel({ mesa, onCerrar, onActualizado }: Props) {
             </select>
             <button
               onClick={() =>
-                conManejoDeError(() => cobrarPedido(pedido.id_pedido, metodoPago))
+                conManejoDeError(() =>
+                  cobrarPedido(pedido.id_pedido, metodoPago, idTurno ?? undefined),
+                )
               }
               disabled={procesando}
               className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-destructive hover:bg-secondary disabled:opacity-50"

@@ -39,10 +39,23 @@ class CajaRepository:
         )
         return self.db.scalar(stmt)
 
-    def obtener_turno_abierto(self) -> TurnoCaja | None:
-        """El hotel opera con un solo cajon fisico, asi que solo puede haber
-        un turno abierto a la vez para todo el hotel (sin importar quien lo
-        abrio); no es un turno por usuario."""
+    def obtener_turno_abierto(self, tipo: str) -> TurnoCaja | None:
+        """Cada tipo de turno (DIURNO, NOCTURNO) es un cajon independiente:
+        solo puede haber un turno abierto a la vez POR TIPO para todo el
+        hotel (sin importar quien lo abrio); no es un turno por usuario."""
+        stmt = (
+            select(TurnoCaja)
+            .where(TurnoCaja.estado == "ABIERTO", TurnoCaja.tipo == tipo)
+            .options(
+                selectinload(TurnoCaja.ventas),
+                selectinload(TurnoCaja.gastos),
+                selectinload(TurnoCaja.usuario),
+            )
+        )
+        return self.db.scalar(stmt)
+
+    def listar_turnos_abiertos(self) -> list[TurnoCaja]:
+        """Todos los cajones abiertos en este momento, sin importar el tipo."""
         stmt = (
             select(TurnoCaja)
             .where(TurnoCaja.estado == "ABIERTO")
@@ -52,7 +65,7 @@ class CajaRepository:
                 selectinload(TurnoCaja.usuario),
             )
         )
-        return self.db.scalar(stmt)
+        return list(self.db.scalars(stmt))
 
     def listar_turnos(
         self,
@@ -60,6 +73,7 @@ class CajaRepository:
         estado: str | None,
         desde: date | None = None,
         hasta: date | None = None,
+        tipo: str | None = None,
     ) -> list[TurnoCaja]:
         stmt = select(TurnoCaja).options(
             selectinload(TurnoCaja.ventas),
@@ -70,6 +84,8 @@ class CajaRepository:
             stmt = stmt.where(TurnoCaja.id_usuario == id_usuario)
         if estado is not None:
             stmt = stmt.where(TurnoCaja.estado == estado)
+        if tipo is not None:
+            stmt = stmt.where(TurnoCaja.tipo == tipo)
         if desde is not None:
             stmt = stmt.where(TurnoCaja.creado_en >= _inicio_dia(desde))
         if hasta is not None:

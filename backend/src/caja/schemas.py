@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 class TurnoCajaAbrir(BaseModel):
     monto_apertura: int = Field(ge=0)
+    tipo: str = Field(default="DIURNO")
 
 
 class TurnoCajaCerrar(BaseModel):
@@ -16,6 +17,7 @@ class TurnoCajaResponse(BaseModel):
     id_usuario: int
     nombre_usuario: str
     estado: str
+    tipo: str
     monto_apertura: int
     monto_cierre_real: int | None
     creado_en: datetime
@@ -32,6 +34,7 @@ class TurnoCajaResponse(BaseModel):
 class GastoCreate(BaseModel):
     concepto: str = Field(min_length=1, max_length=255)
     monto: int = Field(gt=0)
+    id_turno: int | None = Field(default=None)
 
 
 class GastoUpdate(BaseModel):
@@ -52,11 +55,13 @@ class GastoResponse(BaseModel):
 class VentaHabitacionInput(BaseModel):
     id_reserva: int
     metodo_pago: str
+    id_turno: int | None = Field(default=None)
 
 
 class VentaPedidoInput(BaseModel):
     id_pedido: int
     metodo_pago: str
+    id_turno: int | None = Field(default=None)
 
 
 class VentaMostradorItemInput(BaseModel):
@@ -68,6 +73,7 @@ class VentaMostradorItemInput(BaseModel):
 class VentaMostradorInput(BaseModel):
     items: list[VentaMostradorItemInput]
     metodo_pago: str
+    id_turno: int | None = Field(default=None)
 
 
 class VentaItemResponse(BaseModel):

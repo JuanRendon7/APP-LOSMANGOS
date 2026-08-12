@@ -5,22 +5,18 @@ import { listarProductosBar, listarProductosRestaurante } from '@/features/produ
 import type { ProductoBar, ProductoRestaurante } from '@/features/productos/types'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { BuscadorProducto } from '@/shared/ui/BuscadorProducto'
-import {
-  abrirTurno,
-  deshacerUltimaVenta,
-  listarVentas,
-  mensajeErrorCaja,
-  obtenerTurnoActual,
-  ventaMostrador,
-} from './api'
+import { abrirTurno, deshacerUltimaVenta, listarVentas, mensajeErrorCaja, ventaMostrador } from './api'
+import { SelectorCaja } from './SelectorCaja'
 import type {
   MetodoPago,
   OrigenVenta,
   OrigenVentaMostrador,
+  TipoTurno,
   TurnoCaja,
   Venta,
   VentaMostradorItemInput,
 } from './types'
+import { useTurnoCobro } from './useTurnoCobro'
 
 const formatoMoneda = new Intl.NumberFormat('es-CO', {
   style: 'currency',
@@ -52,7 +48,7 @@ interface ItemCarrito extends VentaMostradorItemInput {
 export function VenderPage() {
   const { usuario, tienePermiso } = useAuth()
   const navigate = useNavigate()
-  const [turno, setTurno] = useState<TurnoCaja | null | undefined>(undefined)
+  const { turnos, idTurno, setIdTurno, cargando, recargar } = useTurnoCobro()
   const [error, setError] = useState<string | null>(null)
 
   const puedeAbrir = tienePermiso('CAJA', 'CREAR')
@@ -60,19 +56,9 @@ export function VenderPage() {
   const puedeCerrar = tienePermiso('CAJA', 'CERRAR')
   const primerNombre = usuario?.nombre.split(' ')[0]
 
-  const cargarTurno = useCallback(async () => {
-    try {
-      setTurno(await obtenerTurnoActual())
-    } catch {
-      setError('No se pudo cargar el estado de la caja.')
-    }
-  }, [])
+  const turno = turnos.find((t) => t.id_turno === idTurno) ?? null
 
-  useEffect(() => {
-    cargarTurno()
-  }, [cargarTurno])
-
-  if (turno === undefined) {
+  if (cargando) {
     return <p className="text-sm text-muted-foreground">Cargando...</p>
   }
 
@@ -89,7 +75,7 @@ export function VenderPage() {
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="w-full max-w-sm">
-          <AbrirCajaInline puedeAbrir={puedeAbrir} onAbierta={cargarTurno} setError={setError} />
+          <AbrirCajaInline puedeAbrir={puedeAbrir} onAbierta={recargar} setError={setError} />
         </div>
       </div>
     )
@@ -113,17 +99,20 @@ export function VenderPage() {
             {cajaAbiertaPorOtro && ` · abierta por ${turno.nombre_usuario}`}.
           </p>
         </div>
-        {puedeCerrar && (
-          <button
-            onClick={() => navigate('/caja')}
-            className="shrink-0 text-sm font-medium text-primary hover:underline"
-          >
-            Cerrar caja →
-          </button>
-        )}
+        <div className="flex shrink-0 items-center gap-3">
+          <SelectorCaja turnos={turnos} idTurno={idTurno} onChange={setIdTurno} />
+          {puedeCerrar && (
+            <button
+              onClick={() => navigate('/caja')}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Cerrar caja →
+            </button>
+          )}
+        </div>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <VentaMostrador turno={turno} onCambio={cargarTurno} setError={setError} />
+      <VentaMostrador turno={turno} onCambio={recargar} setError={setError} />
     </div>
   )
 }
@@ -138,6 +127,7 @@ function AbrirCajaInline({
   setError: (msg: string | null) => void
 }) {
   const [monto, setMonto] = useState(0)
+  const [tipo, setTipo] = useState<TipoTurno>('DIURNO')
   const [procesando, setProcesando] = useState(false)
 
   if (!puedeAbrir) {
@@ -157,7 +147,7 @@ function AbrirCajaInline({
     setError(null)
     setProcesando(true)
     try {
-      await abrirTurno(monto)
+      await abrirTurno(monto, tipo)
       await onAbierta()
     } catch (err) {
       setError(mensajeErrorCaja(err, 'No se pudo abrir la caja.'))
@@ -174,10 +164,21 @@ function AbrirCajaInline({
       <div>
         <h2 className="font-serif text-xl font-semibold text-foreground">Abrir la caja del hotel</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Hay un solo cajon compartido. Registra el efectivo con el que arranca el turno.
+          Registra el efectivo con el que arranca el turno.
         </p>
       </div>
       <div className="flex w-full flex-col gap-2">
+        <label className="text-left text-xs font-medium text-muted-foreground">
+          Tipo de turno
+        </label>
+        <select
+          value={tipo}
+          onChange={(e) => setTipo(e.target.value as TipoTurno)}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+        >
+          <option value="DIURNO">Caja diurna</option>
+          <option value="NOCTURNO">Caja nocturna</option>
+        </select>
         <label className="text-left text-xs font-medium text-muted-foreground">
           Efectivo inicial
         </label>
@@ -389,6 +390,7 @@ function VentaMostrador({
           cantidad,
         })),
         metodoPago,
+        idTurno,
       )
       setCarrito([])
       setAvisoStock(null)
@@ -406,7 +408,7 @@ function VentaMostrador({
     setConfirmacion(null)
     setDeshaciendo(true)
     try {
-      await deshacerUltimaVenta()
+      await deshacerUltimaVenta(idTurno)
       await Promise.all([cargarMovimientos(), cargarProductos(), onCambio()])
     } catch {
       setError('No se pudo deshacer la ultima venta.')

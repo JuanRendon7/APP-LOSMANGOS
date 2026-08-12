@@ -1,7 +1,8 @@
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
+import src.caja.service as caja_service
 from src.tarifas.models import Temporada
 from tests.conftest import auth_headers, token_para
 
@@ -82,12 +83,25 @@ def _crear_mesa(client, headers, nombre):
     return resp.json()
 
 
-def _abrir_turno(client, headers, monto_apertura=100000):
-    resp = client.post(
-        "/caja/turnos", headers=headers, json={"monto_apertura": monto_apertura}
-    )
+def _abrir_turno(client, headers, monto_apertura=100000, tipo=None):
+    body = {"monto_apertura": monto_apertura}
+    if tipo is not None:
+        body["tipo"] = tipo
+    resp = client.post("/caja/turnos", headers=headers, json=body)
     assert resp.status_code == 201, resp.text
     return resp.json()
+
+
+def _parchar_hora(monkeypatch, hora, minuto=0):
+    """Fija la 'hora actual' que ve CajaService, para probar la ventana
+    horaria del turno nocturno sin depender de cuando corran los tests."""
+
+    class _RelojFijo(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 8, 11, hora, minuto, tzinfo=tz)
+
+    monkeypatch.setattr(caja_service, "datetime", _RelojFijo)
 
 
 def test_abrir_turno(client, usuario_admin):
@@ -537,6 +551,119 @@ def test_listar_ventas_filtra_por_rango_de_fechas(client, usuario_admin):
         params={"id_turno": turno["id_turno"], "desde": manana},
     )
     assert fuera_de_rango.json() == []
+
+
+def test_turno_nocturno_no_se_puede_abrir_de_dia(client, usuario_admin, monkeypatch):
+    _parchar_hora(monkeypatch, 14, 0)
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    resp = client.post(
+        "/caja/turnos",
+        headers=headers,
+        json={"monto_apertura": 50000, "tipo": "NOCTURNO"},
+    )
+    assert resp.status_code == 422
+    assert "nocturno" in resp.json()["detail"].lower()
+
+
+def test_turno_nocturno_se_abre_de_noche_y_convive_con_el_diurno(
+    client, usuario_admin, usuario_empleado, monkeypatch
+):
+    headers_admin = auth_headers(token_para(client, usuario_admin.email))
+    headers_empleado = auth_headers(token_para(client, usuario_empleado.email))
+
+    diurno = _abrir_turno(client, headers_admin, 100000)
+
+    _parchar_hora(monkeypatch, 20, 0)
+    nocturno = _abrir_turno(client, headers_empleado, 30000, tipo="NOCTURNO")
+
+    assert diurno["tipo"] == "DIURNO"
+    assert nocturno["tipo"] == "NOCTURNO"
+    assert diurno["id_turno"] != nocturno["id_turno"]
+
+    abiertos = client.get("/caja/turnos/abiertos", headers=headers_admin)
+    assert abiertos.status_code == 200
+    ids_abiertos = {t["id_turno"] for t in abiertos.json()}
+    assert {diurno["id_turno"], nocturno["id_turno"]} == ids_abiertos
+
+
+def test_no_se_puede_abrir_dos_turnos_nocturnos_a_la_vez(
+    client, usuario_admin, monkeypatch
+):
+    _parchar_hora(monkeypatch, 22, 0)
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers, tipo="NOCTURNO")
+    resp = client.post(
+        "/caja/turnos",
+        headers=headers,
+        json={"monto_apertura": 10000, "tipo": "NOCTURNO"},
+    )
+    assert resp.status_code == 422
+
+
+def test_venta_requiere_id_turno_cuando_hay_dos_cajas_abiertas(
+    client, usuario_admin, monkeypatch
+):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    diurno = _abrir_turno(client, headers, 100000)
+    _parchar_hora(monkeypatch, 20, 0)
+    nocturno = _abrir_turno(client, headers, 30000, tipo="NOCTURNO")
+
+    producto = _crear_producto_bar(client, headers, "9500001", stock=10)
+
+    sin_turno = client.post(
+        "/caja/ventas/mostrador",
+        headers=headers,
+        json={
+            "items": [
+                {"origen": "BAR", "id_producto": producto["id_producto"], "cantidad": 1}
+            ],
+            "metodo_pago": "EFECTIVO",
+        },
+    )
+    assert sin_turno.status_code == 422
+
+    con_turno = client.post(
+        "/caja/ventas/mostrador",
+        headers=headers,
+        json={
+            "items": [
+                {"origen": "BAR", "id_producto": producto["id_producto"], "cantidad": 1}
+            ],
+            "metodo_pago": "EFECTIVO",
+            "id_turno": nocturno["id_turno"],
+        },
+    )
+    assert con_turno.status_code == 201, con_turno.text
+    assert con_turno.json()["id_turno_caja"] == nocturno["id_turno"]
+
+    turno_diurno_sin_ventas = client.get(
+        "/caja/ventas", headers=headers, params={"id_turno": diurno["id_turno"]}
+    )
+    assert turno_diurno_sin_ventas.json() == []
+
+
+def test_gasto_se_registra_en_la_caja_indicada(client, usuario_admin, monkeypatch):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    diurno = _abrir_turno(client, headers, 100000)
+    _parchar_hora(monkeypatch, 21, 0)
+    nocturno = _abrir_turno(client, headers, 30000, tipo="NOCTURNO")
+
+    gasto = client.post(
+        "/caja/gastos",
+        headers=headers,
+        json={
+            "concepto": "Hielo nocturno",
+            "monto": 5000,
+            "id_turno": nocturno["id_turno"],
+        },
+    )
+    assert gasto.status_code == 201, gasto.text
+    assert gasto.json()["id_turno_caja"] == nocturno["id_turno"]
+
+    gastos_diurno = client.get(
+        "/caja/gastos", headers=headers, params={"id_turno": diurno["id_turno"]}
+    )
+    assert gastos_diurno.json() == []
 
 
 def test_listar_turnos_filtra_por_rango_de_fechas(client, usuario_admin):

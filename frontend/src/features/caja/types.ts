@@ -1,4 +1,5 @@
 export type EstadoTurno = 'ABIERTO' | 'CERRADO'
+export type TipoTurno = 'DIURNO' | 'NOCTURNO'
 export type MetodoPago = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'QR'
 export type OrigenVenta = 'HABITACION' | 'MESA' | 'MOSTRADOR'
 export type OrigenVentaMostrador = 'BAR' | 'RESTAURANTE'
@@ -8,6 +9,7 @@ export interface TurnoCaja {
   id_usuario: number
   nombre_usuario: string
   estado: EstadoTurno
+  tipo: TipoTurno
   monto_apertura: number
   monto_cierre_real: number | null
   creado_en: string

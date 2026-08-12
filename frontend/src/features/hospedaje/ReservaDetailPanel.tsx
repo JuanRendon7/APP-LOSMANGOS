@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { cobrarHabitacion } from '@/features/caja/api'
+import { SelectorCaja } from '@/features/caja/SelectorCaja'
 import type { MetodoPago } from '@/features/caja/types'
+import { useTurnoCobro } from '@/features/caja/useTurnoCobro'
 import { ConsumoPanel } from '@/features/consumo/ConsumoPanel'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { cancelarReserva, checkIn, checkOut, listarReservas } from './api'
@@ -43,6 +45,7 @@ export function ReservaDetailPanel({
   const [error, setError] = useState<string | null>(null)
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO')
   const [cobrando, setCobrando] = useState(false)
+  const { turnos, idTurno, setIdTurno } = useTurnoCobro()
 
   const cargarProximas = useCallback(async () => {
     if (habitacion.estado === 'OCUPADA') {
@@ -84,7 +87,7 @@ export function ReservaDetailPanel({
     setError(null)
     setCobrando(true)
     try {
-      await cobrarHabitacion(idReserva, metodoPago)
+      await cobrarHabitacion(idReserva, metodoPago, idTurno ?? undefined)
       await cargarProximas()
       await onActualizado()
     } catch {
@@ -166,6 +169,12 @@ export function ReservaDetailPanel({
           </div>
           {puedeEditarReservas && (
             <div className="flex flex-wrap items-center gap-2">
+              <SelectorCaja
+                turnos={turnos}
+                idTurno={idTurno}
+                onChange={setIdTurno}
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+              />
               <select
                 value={metodoPago}
                 onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
@@ -234,17 +243,25 @@ export function ReservaDetailPanel({
           </div>
 
           {hayProximas && puedeEditarReservas && (
-            <select
-              value={metodoPago}
-              onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
-              className="rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
-            >
-              {METODOS.map((metodo) => (
-                <option key={metodo} value={metodo}>
-                  {ETIQUETA_METODO[metodo]}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-wrap items-center gap-2">
+              <SelectorCaja
+                turnos={turnos}
+                idTurno={idTurno}
+                onChange={setIdTurno}
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+              />
+              <select
+                value={metodoPago}
+                onChange={(e) => setMetodoPago(e.target.value as MetodoPago)}
+                className="rounded-md border border-input bg-background px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-ring"
+              >
+                {METODOS.map((metodo) => (
+                  <option key={metodo} value={metodo}>
+                    {ETIQUETA_METODO[metodo]}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
 
           {hayProximas && (

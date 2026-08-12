@@ -2,7 +2,7 @@ import { Coins, Receipt, TriangleAlert, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { listarTurnos } from '@/features/caja/api'
-import type { EstadoTurno, TurnoCaja } from '@/features/caja/types'
+import type { EstadoTurno, TipoTurno, TurnoCaja } from '@/features/caja/types'
 import { listarUsuarios } from '@/features/usuarios/api'
 import type { Usuario } from '@/features/usuarios/types'
 import { descargarExcel, PALETA_EXCEL } from '@/shared/lib/excel'
@@ -20,6 +20,7 @@ export function CajaTab({ desde, hasta }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [idUsuario, setIdUsuario] = useState<number | 'TODOS'>('TODOS')
   const [estado, setEstado] = useState<EstadoTurno | 'TODOS'>('TODOS')
+  const [tipo, setTipo] = useState<TipoTurno | 'TODOS'>('TODOS')
 
   useEffect(() => {
     listarUsuarios()
@@ -37,6 +38,7 @@ export function CajaTab({ desde, hasta }: Props) {
           hasta: hasta || undefined,
           idUsuario: idUsuario === 'TODOS' ? undefined : idUsuario,
           estado: estado === 'TODOS' ? undefined : estado,
+          tipo: tipo === 'TODOS' ? undefined : tipo,
         })
         if (cancelado) return
         setTurnos(datos)
@@ -51,7 +53,7 @@ export function CajaTab({ desde, hasta }: Props) {
     return () => {
       cancelado = true
     }
-  }, [desde, hasta, idUsuario, estado])
+  }, [desde, hasta, idUsuario, estado, tipo])
 
   const nombrePorUsuario = useMemo(
     () => new Map(usuarios.map((u) => [u.id_usuario, u.nombre])),
@@ -96,6 +98,7 @@ export function CajaTab({ desde, hasta }: Props) {
       t.fecha_cierre,
       nombrePorUsuario.get(t.id_usuario) ?? `Usuario ${t.id_usuario}`,
       t.estado === 'ABIERTO' ? 'Abierto' : 'Cerrado',
+      t.tipo === 'NOCTURNO' ? 'Nocturna' : 'Diurna',
       t.monto_apertura,
       t.total_efectivo,
       t.total_tarjeta,
@@ -112,12 +115,15 @@ export function CajaTab({ desde, hasta }: Props) {
       titulo: 'Hotel Los Mangos · Historico de turnos de caja',
       subtitulo: `Rango: ${desde || 'inicio'} a ${hasta || 'hoy'} · Cajero: ${
         idUsuario === 'TODOS' ? 'Todos' : (nombrePorUsuario.get(idUsuario) ?? idUsuario)
-      } · Estado: ${estado === 'TODOS' ? 'Todos' : estado}`,
+      } · Estado: ${estado === 'TODOS' ? 'Todos' : estado} · Tipo: ${
+        tipo === 'TODOS' ? 'Todos' : tipo === 'NOCTURNO' ? 'Nocturna' : 'Diurna'
+      }`,
       columnas: [
         { titulo: 'Apertura', formato: 'fechahora' },
         { titulo: 'Cierre', formato: 'fechahora' },
         { titulo: 'Cajero', ancho: 20 },
         { titulo: 'Estado', ancho: 12 },
+        { titulo: 'Tipo de caja', ancho: 12 },
         { titulo: 'Monto apertura', formato: 'moneda' },
         { titulo: 'Efectivo', formato: 'moneda', totalizar: true },
         { titulo: 'Tarjeta', formato: 'moneda', totalizar: true },
@@ -201,6 +207,20 @@ export function CajaTab({ desde, hasta }: Props) {
             </Chip>
           </div>
         </div>
+        <div>
+          <p className="mb-1.5 text-xs font-medium text-muted-foreground">Tipo de caja</p>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip activo={tipo === 'TODOS'} onClick={() => setTipo('TODOS')}>
+              Todos
+            </Chip>
+            <Chip activo={tipo === 'DIURNO'} onClick={() => setTipo('DIURNO')}>
+              Diurna
+            </Chip>
+            <Chip activo={tipo === 'NOCTURNO'} onClick={() => setTipo('NOCTURNO')}>
+              Nocturna
+            </Chip>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -242,7 +262,8 @@ export function CajaTab({ desde, hasta }: Props) {
                   >
                     <span className="truncate">
                       {nombrePorUsuario.get(t.id_usuario) ?? `Usuario ${t.id_usuario}`} ·{' '}
-                      {new Date(t.creado_en).toLocaleDateString('es-CO')}
+                      {new Date(t.creado_en).toLocaleDateString('es-CO')} ·{' '}
+                      {t.tipo === 'NOCTURNO' ? 'Nocturna' : 'Diurna'}
                     </span>
                     <span
                       className={`shrink-0 font-medium ${diferencia > 0 ? 'text-info-700' : 'text-peligro-700'}`}

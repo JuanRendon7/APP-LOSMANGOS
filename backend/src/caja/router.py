@@ -44,6 +44,7 @@ def _turno_response(turno: TurnoCaja) -> TurnoCajaResponse:
         id_usuario=turno.id_usuario,
         nombre_usuario=turno.usuario.nombre,
         estado=turno.estado,
+        tipo=turno.tipo,
         monto_apertura=turno.monto_apertura,
         monto_cierre_real=turno.monto_cierre_real,
         creado_en=turno.creado_en,
@@ -87,11 +88,20 @@ turnos_router = APIRouter(prefix="/caja/turnos", tags=["caja"])
 
 @turnos_router.get("/actual", response_model=TurnoCajaResponse | None)
 def turno_actual(
+    tipo: str = Query(default="DIURNO"),
     _: UsuarioActual = Depends(requiere_permiso("CAJA", "VER")),
     servicio: CajaService = Depends(get_caja_service),
 ):
-    turno = servicio.turno_actual()
+    turno = servicio.turno_actual(tipo)
     return _turno_response(turno) if turno else None
+
+
+@turnos_router.get("/abiertos", response_model=list[TurnoCajaResponse])
+def turnos_abiertos(
+    _: UsuarioActual = Depends(requiere_permiso("CAJA", "VER")),
+    servicio: CajaService = Depends(get_caja_service),
+):
+    return [_turno_response(t) for t in servicio.turnos_abiertos()]
 
 
 @turnos_router.get("", response_model=list[TurnoCajaResponse])
@@ -100,12 +110,13 @@ def listar_turnos(
     estado: str | None = Query(default=None),
     desde: date | None = Query(default=None),
     hasta: date | None = Query(default=None),
+    tipo: str | None = Query(default=None),
     servicio: CajaService = Depends(get_caja_service),
     _: UsuarioActual = Depends(requiere_permiso("CAJA", "VER")),
 ):
     return [
         _turno_response(t)
-        for t in servicio.listar_turnos(id_usuario, estado, desde, hasta)
+        for t in servicio.listar_turnos(id_usuario, estado, desde, hasta, tipo)
     ]
 
 
@@ -119,7 +130,7 @@ def abrir_turno(
     servicio: CajaService = Depends(get_caja_service),
 ):
     try:
-        turno = servicio.abrir_turno(actor.id_usuario, datos.monto_apertura)
+        turno = servicio.abrir_turno(actor.id_usuario, datos.monto_apertura, datos.tipo)
         db.commit()
     except BusinessRuleError as exc:
         db.rollback()
@@ -253,7 +264,7 @@ def cobrar_habitacion(
 ):
     try:
         venta = servicio.cobrar_habitacion(
-            actor.id_usuario, datos.id_reserva, datos.metodo_pago
+            actor.id_usuario, datos.id_reserva, datos.metodo_pago, datos.id_turno
         )
         db.commit()
     except NotFoundError as exc:
@@ -281,7 +292,7 @@ def cobrar_pedido(
 ):
     try:
         venta = servicio.cobrar_pedido(
-            actor.id_usuario, datos.id_pedido, datos.metodo_pago
+            actor.id_usuario, datos.id_pedido, datos.metodo_pago, datos.id_turno
         )
         db.commit()
     except NotFoundError as exc:
@@ -309,7 +320,7 @@ def venta_mostrador(
 ):
     try:
         venta = servicio.venta_mostrador(
-            actor.id_usuario, datos.items, datos.metodo_pago
+            actor.id_usuario, datos.items, datos.metodo_pago, datos.id_turno
         )
         db.commit()
     except NotFoundError as exc:
@@ -328,12 +339,13 @@ def venta_mostrador(
 
 @ventas_router.post("/deshacer-ultima", response_model=VentaResponse)
 def deshacer_ultima_venta(
+    id_turno: int | None = Query(default=None),
     db: Session = Depends(get_db),
     _: UsuarioActual = Depends(requiere_permiso("VENTAS", "EDITAR")),
     servicio: CajaService = Depends(get_caja_service),
 ):
     try:
-        venta = servicio.deshacer_ultima_venta()
+        venta = servicio.deshacer_ultima_venta(id_turno)
         respuesta = _venta_response(venta)
         db.commit()
     except NotFoundError as exc:

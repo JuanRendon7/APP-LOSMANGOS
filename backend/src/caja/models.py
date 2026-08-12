@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.auth.models import Usuario
 from src.hospedaje.models import Reserva
 from src.productos.models import ProductoBar, ProductoRestaurante
+from src.proveedores.models import Proveedor
 from src.restaurante.models import Pedido
 from src.shared.database import Base, TimestampMixin
 
@@ -14,6 +15,7 @@ ESTADOS_TURNO = ["ABIERTO", "CERRADO"]
 TIPOS_TURNO = ["DIURNO", "NOCTURNO"]
 METODOS_PAGO = ["EFECTIVO", "TARJETA", "TRANSFERENCIA", "QR"]
 ORIGENES_VENTA = ["HABITACION", "MESA", "MOSTRADOR"]
+FUENTES_PAGO_GASTO = ["CAJA", "AHORROS"]
 
 
 class TurnoCaja(Base, TimestampMixin):
@@ -49,11 +51,19 @@ class Gasto(Base, TimestampMixin):
     )
     concepto: Mapped[str] = mapped_column(String(255))
     monto: Mapped[int] = mapped_column(Integer)
+    id_proveedor: Mapped[int | None] = mapped_column(
+        ForeignKey("hotel.proveedor.id_proveedor"), default=None
+    )
+    fuente_pago: Mapped[str] = mapped_column(
+        SAEnum(*FUENTES_PAGO_GASTO, name="fuente_pago_gasto", native_enum=False),
+        server_default="CAJA",
+    )
     creado_por: Mapped[int | None] = mapped_column(
         ForeignKey("hotel.usuario.id_usuario"), default=None
     )
 
     turno: Mapped["TurnoCaja"] = relationship(back_populates="gastos")
+    proveedor: Mapped[Proveedor | None] = relationship()
 
 
 class Venta(Base, TimestampMixin):

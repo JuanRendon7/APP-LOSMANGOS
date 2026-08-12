@@ -3,6 +3,7 @@ export type TipoTurno = 'DIURNO' | 'NOCTURNO'
 export type MetodoPago = 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'QR'
 export type OrigenVenta = 'HABITACION' | 'MESA' | 'MOSTRADOR'
 export type OrigenVentaMostrador = 'BAR' | 'RESTAURANTE'
+export type FuentePagoGasto = 'CAJA' | 'AHORROS'
 
 export interface TurnoCaja {
   id_turno: number
@@ -19,6 +20,7 @@ export interface TurnoCaja {
   total_transferencia: number
   total_qr: number
   total_gastos: number
+  total_gastos_caja: number
   monto_esperado_efectivo: number
   diferencia: number | null
 }
@@ -28,6 +30,9 @@ export interface Gasto {
   id_turno_caja: number
   concepto: string
   monto: number
+  id_proveedor: number | null
+  nombre_proveedor: string | null
+  fuente_pago: FuentePagoGasto
   creado_en: string
 }
 

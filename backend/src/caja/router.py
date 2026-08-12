@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from src.auth.dependencies import requiere_permiso
 from src.auth.schemas import UsuarioActual
 from src.caja.dependencies import get_caja_service
-from src.caja.models import TurnoCaja, Venta
+from src.caja.models import Gasto, TurnoCaja, Venta
 from src.caja.schemas import (
     GastoCreate,
     GastoResponse,
@@ -33,7 +33,10 @@ def _turno_response(turno: TurnoCaja) -> TurnoCajaResponse:
     )
     total_qr = sum(v.monto for v in turno.ventas if v.metodo_pago == "QR")
     total_gastos = sum(g.monto for g in turno.gastos)
-    monto_esperado_efectivo = turno.monto_apertura + total_efectivo - total_gastos
+    total_gastos_caja = sum(
+        g.monto for g in turno.gastos if g.fuente_pago == "CAJA"
+    )
+    monto_esperado_efectivo = turno.monto_apertura + total_efectivo - total_gastos_caja
     diferencia = (
         turno.monto_cierre_real - monto_esperado_efectivo
         if turno.monto_cierre_real is not None
@@ -54,8 +57,22 @@ def _turno_response(turno: TurnoCaja) -> TurnoCajaResponse:
         total_transferencia=total_transferencia,
         total_qr=total_qr,
         total_gastos=total_gastos,
+        total_gastos_caja=total_gastos_caja,
         monto_esperado_efectivo=monto_esperado_efectivo,
         diferencia=diferencia,
+    )
+
+
+def _gasto_response(gasto: Gasto) -> GastoResponse:
+    return GastoResponse(
+        id_gasto=gasto.id_gasto,
+        id_turno_caja=gasto.id_turno_caja,
+        concepto=gasto.concepto,
+        monto=gasto.monto,
+        id_proveedor=gasto.id_proveedor,
+        nombre_proveedor=gasto.proveedor.nombre if gasto.proveedor else None,
+        fuente_pago=gasto.fuente_pago,
+        creado_en=gasto.creado_en,
     )
 
 
@@ -177,7 +194,7 @@ def listar_gastos(
     servicio: CajaService = Depends(get_caja_service),
     _: UsuarioActual = Depends(requiere_permiso("GASTOS", "VER")),
 ):
-    return [GastoResponse.model_validate(g) for g in servicio.listar_gastos(id_turno)]
+    return [_gasto_response(g) for g in servicio.listar_gastos(id_turno)]
 
 
 @gastos_router.post(
@@ -192,13 +209,18 @@ def registrar_gasto(
     try:
         gasto = servicio.registrar_gasto(actor.id_usuario, datos)
         db.commit()
+    except NotFoundError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
     except BusinessRuleError as exc:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
         ) from exc
     db.refresh(gasto)
-    return GastoResponse.model_validate(gasto)
+    return _gasto_response(gasto)
 
 
 @gastos_router.patch("/{id_gasto}", response_model=GastoResponse)
@@ -217,8 +239,13 @@ def actualizar_gasto(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
         ) from exc
+    except BusinessRuleError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
     db.refresh(gasto)
-    return GastoResponse.model_validate(gasto)
+    return _gasto_response(gasto)
 
 
 @gastos_router.delete("/{id_gasto}", status_code=status.HTTP_204_NO_CONTENT)

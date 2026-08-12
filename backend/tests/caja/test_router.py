@@ -413,6 +413,74 @@ def test_cerrar_turno_calcula_diferencia_con_ventas_mezcladas(client, usuario_ad
     assert datos["diferencia"] == 0
 
 
+def test_gasto_pagado_con_ahorros_no_afecta_el_efectivo_esperado(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    turno = _abrir_turno(client, headers, 100000)
+
+    proveedor = client.post(
+        "/proveedores",
+        headers=headers,
+        json={"nombre": "Proveedor de gas", "categoria": "Mantenimiento"},
+    )
+    assert proveedor.status_code == 201, proveedor.text
+    id_proveedor = proveedor.json()["id_proveedor"]
+
+    gasto = client.post(
+        "/caja/gastos",
+        headers=headers,
+        json={
+            "concepto": "Pago proveedor de gas",
+            "monto": 600000,
+            "id_proveedor": id_proveedor,
+            "fuente_pago": "AHORROS",
+        },
+    )
+    assert gasto.status_code == 201, gasto.text
+    assert gasto.json()["nombre_proveedor"] == "Proveedor de gas"
+    assert gasto.json()["fuente_pago"] == "AHORROS"
+
+    actual = client.get("/caja/turnos/actual", headers=headers).json()
+    # el gasto se paga con ahorros, no con la caja del turno: los 100000 de
+    # apertura siguen siendo el efectivo esperado, aunque el gasto de 600000
+    # (mayor a lo que hay en caja) si se contabiliza en el total de gastos.
+    assert actual["id_turno"] == turno["id_turno"]
+    assert actual["total_gastos"] == 600000
+    assert actual["total_gastos_caja"] == 0
+    assert actual["monto_esperado_efectivo"] == 100000
+
+    cierre = client.post(
+        f"/caja/turnos/{turno['id_turno']}/cerrar",
+        headers=headers,
+        json={"monto_cierre_real": 100000},
+    )
+    assert cierre.status_code == 200, cierre.text
+    assert cierre.json()["diferencia"] == 0
+
+
+def test_registrar_gasto_con_fuente_pago_invalida_falla(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers)
+
+    resp = client.post(
+        "/caja/gastos",
+        headers=headers,
+        json={"concepto": "Aseo", "monto": 2000, "fuente_pago": "TARJETA_CREDITO"},
+    )
+    assert resp.status_code == 422
+
+
+def test_registrar_gasto_con_proveedor_inexistente_falla(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers)
+
+    resp = client.post(
+        "/caja/gastos",
+        headers=headers,
+        json={"concepto": "Aseo", "monto": 2000, "id_proveedor": 999999},
+    )
+    assert resp.status_code == 404
+
+
 def test_empleado_puede_crear_gasto_pero_no_editarlo_ni_eliminarlo(
     client, usuario_admin, usuario_empleado
 ):

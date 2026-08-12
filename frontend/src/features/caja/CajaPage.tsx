@@ -25,6 +25,8 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
+import { listarProveedores } from '@/features/proveedores/api'
+import type { Proveedor } from '@/features/proveedores/types'
 import { useAuth } from '@/shared/auth/AuthContext'
 import { ESTILO_TONO } from '@/shared/ui/estado'
 import {
@@ -38,7 +40,7 @@ import {
   mensajeErrorCaja,
   obtenerTurnoActual,
 } from './api'
-import type { Gasto, OrigenVenta, TipoTurno, TurnoCaja, Venta } from './types'
+import type { FuentePagoGasto, Gasto, OrigenVenta, TipoTurno, TurnoCaja, Venta } from './types'
 
 const HORA_INICIO_NOCTURNO = 18
 const HORA_FIN_NOCTURNO = 6
@@ -329,9 +331,15 @@ function ResumenTurnoCard({ turno, ventas }: { turno: TurnoCaja; ventas: Venta[]
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Apertura {formatoMoneda.format(turno.monto_apertura)} + efectivo vendido{' '}
-          {formatoMoneda.format(turno.total_efectivo)} − gastos{' '}
-          {formatoMoneda.format(turno.total_gastos)}
+          {formatoMoneda.format(turno.total_efectivo)} − gastos con caja{' '}
+          {formatoMoneda.format(turno.total_gastos_caja)}
         </p>
+        {turno.total_gastos > turno.total_gastos_caja && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            + {formatoMoneda.format(turno.total_gastos - turno.total_gastos_caja)} pagados
+            con ahorros (no afecta el efectivo esperado)
+          </p>
+        )}
       </div>
 
       <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -418,19 +426,38 @@ function GastosCard({
 }) {
   const [concepto, setConcepto] = useState('')
   const [monto, setMonto] = useState(0)
+  const [idProveedor, setIdProveedor] = useState('')
+  const [fuentePago, setFuentePago] = useState<FuentePagoGasto>('CAJA')
   const [idEditando, setIdEditando] = useState<number | null>(null)
   const [conceptoEdit, setConceptoEdit] = useState('')
   const [montoEdit, setMontoEdit] = useState(0)
+  const [idProveedorEdit, setIdProveedorEdit] = useState('')
+  const [fuentePagoEdit, setFuentePagoEdit] = useState<FuentePagoGasto>('CAJA')
   const [procesando, setProcesando] = useState(false)
+  const [proveedores, setProveedores] = useState<Proveedor[]>([])
+
+  useEffect(() => {
+    listarProveedores()
+      .then((datos) => setProveedores(datos.filter((p) => p.activo)))
+      .catch(() => setProveedores([]))
+  }, [])
 
   const manejarCrear = async () => {
     if (!concepto || monto <= 0) return
     setError(null)
     setProcesando(true)
     try {
-      await crearGasto(concepto, monto, turno.id_turno)
+      await crearGasto(
+        concepto,
+        monto,
+        turno.id_turno,
+        idProveedor ? Number(idProveedor) : undefined,
+        fuentePago,
+      )
       setConcepto('')
       setMonto(0)
+      setIdProveedor('')
+      setFuentePago('CAJA')
       await onCambio()
     } catch {
       setError('No se pudo registrar el gasto.')
@@ -443,13 +470,20 @@ function GastosCard({
     setIdEditando(gasto.id_gasto)
     setConceptoEdit(gasto.concepto)
     setMontoEdit(gasto.monto)
+    setIdProveedorEdit(gasto.id_proveedor ? String(gasto.id_proveedor) : '')
+    setFuentePagoEdit(gasto.fuente_pago)
   }
 
   const guardarEdicion = async (idGasto: number) => {
     setError(null)
     setProcesando(true)
     try {
-      await actualizarGasto(idGasto, { concepto: conceptoEdit, monto: montoEdit })
+      await actualizarGasto(idGasto, {
+        concepto: conceptoEdit,
+        monto: montoEdit,
+        id_proveedor: idProveedorEdit ? Number(idProveedorEdit) : undefined,
+        fuente_pago: fuentePagoEdit,
+      })
       setIdEditando(null)
       await onCambio()
     } catch {
@@ -502,6 +536,26 @@ function GastosCard({
                   onChange={(e) => setMontoEdit(Number(e.target.value) || 0)}
                   className="w-28 rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-ring"
                 />
+                <select
+                  value={idProveedorEdit}
+                  onChange={(e) => setIdProveedorEdit(e.target.value)}
+                  className="rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">Sin proveedor</option>
+                  {proveedores.map((p) => (
+                    <option key={p.id_proveedor} value={p.id_proveedor}>
+                      {p.nombre}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={fuentePagoEdit}
+                  onChange={(e) => setFuentePagoEdit(e.target.value as FuentePagoGasto)}
+                  className="rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="CAJA">Caja</option>
+                  <option value="AHORROS">Ahorros</option>
+                </select>
                 <button
                   onClick={() => guardarEdicion(gasto.id_gasto)}
                   disabled={procesando}
@@ -520,6 +574,16 @@ function GastosCard({
               <>
                 <span>
                   {gasto.concepto}
+                  {gasto.nombre_proveedor && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      · {gasto.nombre_proveedor}
+                    </span>
+                  )}
+                  {gasto.fuente_pago === 'AHORROS' && (
+                    <span className="ml-2 inline-flex items-center rounded-full bg-info-100 px-1.5 py-0.5 text-[10px] font-medium text-info-800">
+                      Ahorros
+                    </span>
+                  )}
                   <span className="ml-2 text-xs text-muted-foreground">
                     {formatoHora.format(new Date(gasto.creado_en))}
                   </span>
@@ -567,6 +631,26 @@ function GastosCard({
             onChange={(e) => setMonto(Number(e.target.value) || 0)}
             className="w-28 rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
           />
+          <select
+            value={idProveedor}
+            onChange={(e) => setIdProveedor(e.target.value)}
+            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">Sin proveedor</option>
+            {proveedores.map((p) => (
+              <option key={p.id_proveedor} value={p.id_proveedor}>
+                {p.nombre}
+              </option>
+            ))}
+          </select>
+          <select
+            value={fuentePago}
+            onChange={(e) => setFuentePago(e.target.value as FuentePagoGasto)}
+            className="rounded-md border border-input bg-background px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="CAJA">Pagado con caja</option>
+            <option value="AHORROS">Pagado con ahorros</option>
+          </select>
           <button
             onClick={manejarCrear}
             disabled={!concepto || monto <= 0 || procesando}

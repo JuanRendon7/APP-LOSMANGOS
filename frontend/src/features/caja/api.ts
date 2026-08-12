@@ -2,6 +2,7 @@ import axios from 'axios'
 import { apiClient } from '@/shared/api/client'
 import type {
   EstadoTurno,
+  FuentePagoGasto,
   Gasto,
   MetodoPago,
   OrigenVenta,
@@ -62,18 +63,27 @@ export async function crearGasto(
   concepto: string,
   monto: number,
   idTurno?: number,
+  idProveedor?: number,
+  fuentePago: FuentePagoGasto = 'CAJA',
 ): Promise<Gasto> {
   const { data } = await apiClient.post<Gasto>('/caja/gastos', {
     concepto,
     monto,
     id_turno: idTurno,
+    id_proveedor: idProveedor,
+    fuente_pago: fuentePago,
   })
   return data
 }
 
 export async function actualizarGasto(
   idGasto: number,
-  datos: { concepto?: string; monto?: number },
+  datos: {
+    concepto?: string
+    monto?: number
+    id_proveedor?: number
+    fuente_pago?: FuentePagoGasto
+  },
 ): Promise<Gasto> {
   const { data } = await apiClient.patch<Gasto>(`/caja/gastos/${idGasto}`, datos)
   return data

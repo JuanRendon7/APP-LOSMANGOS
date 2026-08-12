@@ -8,6 +8,7 @@ from src.hospedaje.repository import HospedajeRepository
 from src.hospedaje.service import HospedajeService
 from src.productos.repository import ProductosRepository
 from src.productos.service import ProductosService
+from src.proveedores.repository import ProveedoresRepository
 from src.restaurante.repository import RestauranteRepository
 from src.restaurante.service import RestauranteService
 from src.shared.database import get_db
@@ -25,4 +26,5 @@ def get_caja_service(db: Session = Depends(get_db)) -> CajaService:
         ),
         RestauranteService(RestauranteRepository(db), productos_service),
         productos_service,
+        ProveedoresRepository(db),
     )

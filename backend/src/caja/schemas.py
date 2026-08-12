@@ -27,6 +27,7 @@ class TurnoCajaResponse(BaseModel):
     total_transferencia: int
     total_qr: int
     total_gastos: int
+    total_gastos_caja: int
     monto_esperado_efectivo: int
     diferencia: int | None
 
@@ -35,11 +36,15 @@ class GastoCreate(BaseModel):
     concepto: str = Field(min_length=1, max_length=255)
     monto: int = Field(gt=0)
     id_turno: int | None = Field(default=None)
+    id_proveedor: int | None = Field(default=None)
+    fuente_pago: str = Field(default="CAJA")
 
 
 class GastoUpdate(BaseModel):
     concepto: str | None = Field(default=None, min_length=1, max_length=255)
     monto: int | None = Field(default=None, gt=0)
+    id_proveedor: int | None = Field(default=None)
+    fuente_pago: str | None = Field(default=None)
 
 
 class GastoResponse(BaseModel):
@@ -47,6 +52,9 @@ class GastoResponse(BaseModel):
     id_turno_caja: int
     concepto: str
     monto: int
+    id_proveedor: int | None
+    nombre_proveedor: str | None
+    fuente_pago: str
     creado_en: datetime
 
     model_config = {"from_attributes": True}

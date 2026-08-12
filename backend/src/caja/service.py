@@ -2,6 +2,7 @@ from datetime import UTC, date, datetime, time
 from zoneinfo import ZoneInfo
 
 from src.caja.models import (
+    FUENTES_PAGO_GASTO,
     METODOS_PAGO,
     TIPOS_TURNO,
     Gasto,
@@ -14,6 +15,7 @@ from src.caja.schemas import GastoCreate, GastoUpdate, VentaMostradorItemInput
 from src.consumo.repository import ConsumoRepository
 from src.hospedaje.service import HospedajeService
 from src.productos.service import ProductosService
+from src.proveedores.repository import ProveedoresRepository
 from src.restaurante.service import RestauranteService
 from src.shared.exceptions import BusinessRuleError, NotFoundError
 
@@ -33,12 +35,14 @@ class CajaService:
         hospedaje_service: HospedajeService,
         restaurante_service: RestauranteService,
         productos_service: ProductosService,
+        proveedores_repository: ProveedoresRepository,
     ) -> None:
         self.repository = repository
         self.consumo_repository = consumo_repository
         self.hospedaje_service = hospedaje_service
         self.restaurante_service = restaurante_service
         self.productos_service = productos_service
+        self.proveedores_repository = proveedores_repository
 
     # Turnos
 
@@ -117,12 +121,26 @@ class CajaService:
     def listar_gastos(self, id_turno: int | None) -> list[Gasto]:
         return self.repository.listar_gastos(id_turno)
 
+    def _validar_fuente_pago(self, fuente_pago: str) -> None:
+        if fuente_pago not in FUENTES_PAGO_GASTO:
+            raise BusinessRuleError(f"Fuente de pago '{fuente_pago}' invalida")
+
+    def _validar_proveedor(self, id_proveedor: int | None) -> None:
+        if id_proveedor is None:
+            return
+        if self.proveedores_repository.obtener(id_proveedor) is None:
+            raise NotFoundError("Proveedor no encontrado")
+
     def registrar_gasto(self, id_usuario: int, datos: GastoCreate) -> Gasto:
         turno = self._resolver_turno(datos.id_turno)
+        self._validar_fuente_pago(datos.fuente_pago)
+        self._validar_proveedor(datos.id_proveedor)
         gasto = Gasto(
             id_turno_caja=turno.id_turno,
             concepto=datos.concepto,
             monto=datos.monto,
+            id_proveedor=datos.id_proveedor,
+            fuente_pago=datos.fuente_pago,
             creado_por=id_usuario,
         )
         return self.repository.crear_gasto(gasto)
@@ -135,6 +153,12 @@ class CajaService:
             gasto.concepto = datos.concepto
         if datos.monto is not None:
             gasto.monto = datos.monto
+        if datos.fuente_pago is not None:
+            self._validar_fuente_pago(datos.fuente_pago)
+            gasto.fuente_pago = datos.fuente_pago
+        if datos.id_proveedor is not None:
+            self._validar_proveedor(datos.id_proveedor)
+            gasto.id_proveedor = datos.id_proveedor
         return gasto
 
     def eliminar_gasto(self, id_gasto: int) -> None:

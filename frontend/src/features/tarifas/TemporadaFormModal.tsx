@@ -159,7 +159,7 @@ export function TemporadaFormModal({ temporadaExistente, onCerrar, onGuardada }:
                   id="precio_noche"
                   type="number"
                   min={0}
-                  step={1000}
+                  step={1}
                   name={field.name}
                   ref={field.ref}
                   value={field.value}

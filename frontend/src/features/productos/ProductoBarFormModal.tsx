@@ -34,7 +34,7 @@ function CampoNumero({
   name,
   inputRef,
   error,
-  step = 500,
+  step = 1,
 }: {
   id: string
   label: string

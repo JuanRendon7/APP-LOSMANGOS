@@ -132,7 +132,7 @@ export function ProductoRestauranteFormModal({
                   id="precio_venta"
                   type="number"
                   min={0}
-                  step={500}
+                  step={1}
                   name={field.name}
                   ref={field.ref}
                   value={field.value}

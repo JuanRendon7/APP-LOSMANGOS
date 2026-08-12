@@ -169,6 +169,12 @@ class CajaService:
 
     # Ventas
 
+    def obtener_venta(self, id_venta: int) -> Venta:
+        venta = self.repository.obtener_venta(id_venta)
+        if venta is None:
+            raise NotFoundError("Venta no encontrada")
+        return venta
+
     def listar_ventas(
         self,
         id_turno: int | None,

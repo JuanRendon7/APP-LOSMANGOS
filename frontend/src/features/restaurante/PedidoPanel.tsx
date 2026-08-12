@@ -67,6 +67,7 @@ export function PedidoPanel({ mesa, mesasLibres, onCerrar, onActualizado }: Prop
   const [procesando, setProcesando] = useState(false)
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO')
   const [mesaDestino, setMesaDestino] = useState('')
+  const [idVentaParaImprimir, setIdVentaParaImprimir] = useState<number | null>(null)
   const { turnos, idTurno, setIdTurno } = useTurnoCobro()
 
   const puedeEditar = tienePermiso('PEDIDOS', 'EDITAR')
@@ -205,8 +206,16 @@ export function PedidoPanel({ mesa, mesasLibres, onCerrar, onActualizado }: Prop
         )}
       </ul>
 
-      <p className="mb-3 font-serif text-xl font-semibold text-foreground">
+      <p className="mb-3 flex flex-wrap items-center gap-3 font-serif text-xl font-semibold text-foreground">
         Total: {formatoMoneda.format(pedido.total)}
+        {idVentaParaImprimir && (
+          <button
+            onClick={() => window.open(`/ventas/${idVentaParaImprimir}/recibo`, '_blank')}
+            className="text-xs font-medium text-primary underline hover:opacity-80"
+          >
+            Imprimir recibo
+          </button>
+        )}
       </p>
 
       {puedeEditar && pedido.estado !== 'CERRADO' && (
@@ -339,9 +348,14 @@ export function PedidoPanel({ mesa, mesasLibres, onCerrar, onActualizado }: Prop
             {metodoPago === 'EFECTIVO' && <DevueltaEfectivo total={pedido.total} />}
             <button
               onClick={() =>
-                conManejoDeError(() =>
-                  cobrarPedido(pedido.id_pedido, metodoPago, idTurno ?? undefined),
-                )
+                conManejoDeError(async () => {
+                  const venta = await cobrarPedido(
+                    pedido.id_pedido,
+                    metodoPago,
+                    idTurno ?? undefined,
+                  )
+                  setIdVentaParaImprimir(venta.id_venta)
+                })
               }
               disabled={procesando}
               className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-destructive hover:bg-secondary disabled:opacity-50"

@@ -48,6 +48,7 @@ export function ReservaDetailPanel({
   const [error, setError] = useState<string | null>(null)
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO')
   const [cobrando, setCobrando] = useState(false)
+  const [idVentaParaImprimir, setIdVentaParaImprimir] = useState<number | null>(null)
   const [totalPendienteOcupada, setTotalPendienteOcupada] = useState(0)
   const [habitacionDestino, setHabitacionDestino] = useState('')
   const { turnos, idTurno, setIdTurno } = useTurnoCobro()
@@ -92,7 +93,8 @@ export function ReservaDetailPanel({
     setError(null)
     setCobrando(true)
     try {
-      await cobrarHabitacion(idReserva, metodoPago, idTurno ?? undefined)
+      const venta = await cobrarHabitacion(idReserva, metodoPago, idTurno ?? undefined)
+      setIdVentaParaImprimir(venta.id_venta)
       await cargarProximas()
       await onActualizado()
     } catch {
@@ -155,6 +157,17 @@ export function ReservaDetailPanel({
       </div>
 
       {error && <p className="mb-2 text-sm text-destructive">{error}</p>}
+      {idVentaParaImprimir && (
+        <p className="mb-2 flex items-center gap-2 rounded-md bg-primary/10 px-2 py-1 text-sm text-primary">
+          Cobro registrado.
+          <button
+            onClick={() => window.open(`/ventas/${idVentaParaImprimir}/recibo`, '_blank')}
+            className="text-xs font-medium underline hover:opacity-80"
+          >
+            Imprimir recibo
+          </button>
+        </p>
+      )}
 
       {habitacion.estado === 'OCUPADA' && habitacion.reserva_activa && (
         <div className="space-y-2 text-sm">

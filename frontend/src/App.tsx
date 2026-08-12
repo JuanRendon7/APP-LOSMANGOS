@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { CajaPage } from '@/features/caja/CajaPage'
+import { ReciboPage } from '@/features/caja/ReciboPage'
 import { VenderPage } from '@/features/caja/VenderPage'
 import { ConfiguracionPage } from '@/features/configuracion/ConfiguracionPage'
 import { ComandaHabitacionPage } from '@/features/hospedaje/ComandaHabitacionPage'
@@ -179,6 +180,14 @@ export default function App() {
                     <ConfiguracionPage />
                   </RequierePermiso>
                 </AppShell>
+              </RequiereSesion>
+            }
+          />
+          <Route
+            path="/ventas/:id/recibo"
+            element={
+              <RequiereSesion>
+                <ReciboPage />
               </RequiereSesion>
             }
           />

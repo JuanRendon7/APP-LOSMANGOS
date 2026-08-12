@@ -360,6 +360,36 @@ def test_venta_mostrador_bar_descuenta_stock(client, usuario_admin):
     assert actualizado["stock"] == 7
 
 
+def test_obtener_venta_por_id_para_el_recibo(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers)
+    producto = _crear_producto_bar(client, headers, "9100005", stock=10)
+
+    crear = client.post(
+        "/caja/ventas/mostrador",
+        headers=headers,
+        json={
+            "items": [
+                {"origen": "BAR", "id_producto": producto["id_producto"], "cantidad": 2}
+            ],
+            "metodo_pago": "EFECTIVO",
+        },
+    )
+    id_venta = crear.json()["id_venta"]
+
+    obtenida = client.get(f"/caja/ventas/{id_venta}", headers=headers)
+    assert obtenida.status_code == 200, obtenida.text
+    assert obtenida.json()["id_venta"] == id_venta
+    assert obtenida.json()["monto"] == 10000
+    assert len(obtenida.json()["items"]) == 1
+
+
+def test_obtener_venta_inexistente_devuelve_404(client, usuario_admin):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    resp = client.get("/caja/ventas/999999", headers=headers)
+    assert resp.status_code == 404
+
+
 def test_cerrar_turno_calcula_diferencia_con_ventas_mezcladas(client, usuario_admin):
     headers = auth_headers(token_para(client, usuario_admin.email))
     turno = _abrir_turno(client, headers, 100000)

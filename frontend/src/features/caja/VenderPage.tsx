@@ -221,6 +221,7 @@ function VentaMostrador({
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO')
   const [procesando, setProcesando] = useState(false)
   const [confirmacion, setConfirmacion] = useState<string | null>(null)
+  const [idVentaParaImprimir, setIdVentaParaImprimir] = useState<number | null>(null)
   const [codigoBarras, setCodigoBarras] = useState('')
   const [errorEscaneo, setErrorEscaneo] = useState<string | null>(null)
   const [avisoStock, setAvisoStock] = useState<string | null>(null)
@@ -381,9 +382,10 @@ function VentaMostrador({
     if (carrito.length === 0) return
     setError(null)
     setConfirmacion(null)
+    setIdVentaParaImprimir(null)
     setProcesando(true)
     try {
-      await ventaMostrador(
+      const venta = await ventaMostrador(
         carrito.map(({ origen, id_producto, cantidad }) => ({
           origen,
           id_producto,
@@ -395,6 +397,7 @@ function VentaMostrador({
       setCarrito([])
       setAvisoStock(null)
       setConfirmacion(`Venta cobrada: ${formatoMoneda.format(total)}`)
+      setIdVentaParaImprimir(venta.id_venta)
       await Promise.all([cargarMovimientos(), cargarProductos(), onCambio()])
     } catch {
       setError('No se pudo registrar la venta.')
@@ -493,8 +496,16 @@ function VentaMostrador({
         <div className="rounded-lg border border-border bg-card p-4">
           <h2 className="mb-3 font-serif text-lg font-semibold text-card-foreground">Carrito</h2>
           {confirmacion && (
-            <p className="mb-2 rounded-md bg-primary/10 px-2 py-1 text-sm text-primary">
+            <p className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md bg-primary/10 px-2 py-1 text-sm text-primary">
               {confirmacion}
+              {idVentaParaImprimir && (
+                <button
+                  onClick={() => window.open(`/ventas/${idVentaParaImprimir}/recibo`, '_blank')}
+                  className="text-xs font-medium underline hover:opacity-80"
+                >
+                  Imprimir recibo
+                </button>
+              )}
             </p>
           )}
           <ul className="mb-3 space-y-1">

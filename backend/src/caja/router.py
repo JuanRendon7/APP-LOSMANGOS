@@ -282,6 +282,20 @@ def listar_ventas(
     return [_venta_response(v) for v in ventas]
 
 
+@ventas_router.get("/{id_venta}", response_model=VentaResponse)
+def obtener_venta(
+    id_venta: int,
+    servicio: CajaService = Depends(get_caja_service),
+    _: UsuarioActual = Depends(requiere_permiso("VENTAS", "VER")),
+):
+    try:
+        return _venta_response(servicio.obtener_venta(id_venta))
+    except NotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
+        ) from exc
+
+
 @ventas_router.post(
     "/habitacion", response_model=VentaResponse, status_code=status.HTTP_201_CREATED
 )

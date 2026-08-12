@@ -132,6 +132,11 @@ export async function ventaMostrador(
   return data
 }
 
+export async function obtenerVenta(idVenta: number): Promise<Venta> {
+  const { data } = await apiClient.get<Venta>(`/caja/ventas/${idVenta}`)
+  return data
+}
+
 export async function listarVentas(params: {
   idTurno?: number
   metodoPago?: MetodoPago

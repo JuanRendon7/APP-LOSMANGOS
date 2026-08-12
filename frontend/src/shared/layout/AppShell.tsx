@@ -11,6 +11,7 @@ import {
   PanelLeft,
   ShoppingCart,
   Tag,
+  Truck,
   Users,
   UtensilsCrossed,
   Wallet,
@@ -82,6 +83,7 @@ const GRUPOS: Grupo[] = [
           recurso: 'HABITACIONES',
           icon: BedDouble,
         },
+        { to: '/proveedores', label: 'Proveedores', recurso: 'PROVEEDORES', icon: Truck },
         { to: '/configuracion', label: 'Notificaciones', recurso: 'CONFIGURACION', icon: Bell },
       ],
     },
@@ -103,6 +105,7 @@ const TITULOS_PAGINA: Record<string, string> = {
   '/liquidaciones': 'Nomina empleados',
   '/configuracion': 'Notificaciones',
   '/habitaciones/catalogo': 'Habitaciones',
+  '/proveedores': 'Proveedores',
 }
 
 function ItemEnlace({

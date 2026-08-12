@@ -9,6 +9,7 @@ import { HabitacionesPage } from '@/features/hospedaje/HabitacionesPage'
 import { LiquidacionesPage } from '@/features/liquidaciones/LiquidacionesPage'
 import { ProductosBarPage } from '@/features/productos/ProductosBarPage'
 import { ProductosRestaurantePage } from '@/features/productos/ProductosRestaurantePage'
+import { ProveedoresPage } from '@/features/proveedores/ProveedoresPage'
 import { ReportesPage } from '@/features/reportes/ReportesPage'
 import { ComandaPage } from '@/features/restaurante/ComandaPage'
 import { MapaMesasPage } from '@/features/restaurante/MapaMesasPage'
@@ -104,6 +105,18 @@ export default function App() {
                 <AppShell>
                   <RequierePermiso recurso="PRODUCTOS_BAR" accion="VER">
                     <ProductosBarPage />
+                  </RequierePermiso>
+                </AppShell>
+              </RequiereSesion>
+            }
+          />
+          <Route
+            path="/proveedores"
+            element={
+              <RequiereSesion>
+                <AppShell>
+                  <RequierePermiso recurso="PROVEEDORES" accion="VER">
+                    <ProveedoresPage />
                   </RequierePermiso>
                 </AppShell>
               </RequiereSesion>

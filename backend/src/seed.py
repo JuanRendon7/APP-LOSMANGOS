@@ -35,6 +35,7 @@ RECURSOS_ACCIONES = {
     "VENTAS": ["VER", "CREAR", "EDITAR"],
     "CAJA": ["VER", "CREAR", "CERRAR"],
     "GASTOS": ["VER", "CREAR", "EDITAR", "ELIMINAR"],
+    "PROVEEDORES": ["VER", "CREAR", "EDITAR", "ELIMINAR"],
     "REPORTES": ["VER"],
     "USUARIOS": ["VER", "CREAR", "EDITAR", "ELIMINAR"],
     "ROLES": ["VER", "EDITAR"],
@@ -54,6 +55,7 @@ EMPLEADO_PERMISOS = {
     "VENTAS": ["VER", "CREAR"],
     "CAJA": ["VER", "CREAR", "CERRAR"],
     "GASTOS": ["VER", "CREAR"],
+    "PROVEEDORES": ["VER"],
     "CONFIGURACION": ["VER"],
 }
 

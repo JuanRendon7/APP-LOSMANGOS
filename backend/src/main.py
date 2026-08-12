@@ -14,6 +14,7 @@ from src.consumo.router import router as consumo_router
 from src.hospedaje.router import habitaciones_router, huespedes_router, reservas_router
 from src.liquidaciones.router import router as liquidaciones_router
 from src.productos.router import productos_bar_router, productos_restaurante_router
+from src.proveedores.router import proveedores_router
 from src.restaurante.router import mesas_router, pedidos_router
 from src.shared import (
     models_registry,  # noqa: F401  (resuelve metadata/FK antes de servir)
@@ -77,3 +78,4 @@ app.include_router(gastos_router)
 app.include_router(ventas_router)
 app.include_router(configuracion_router)
 app.include_router(liquidaciones_router)
+app.include_router(proveedores_router)

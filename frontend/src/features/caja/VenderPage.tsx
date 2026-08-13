@@ -1,4 +1,4 @@
-import { Barcode, Wallet } from 'lucide-react'
+import { Barcode, Printer, Wallet } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { listarProductosBar, listarProductosRestaurante } from '@/features/productos/api'
@@ -221,7 +221,6 @@ function VentaMostrador({
   const [metodoPago, setMetodoPago] = useState<MetodoPago>('EFECTIVO')
   const [procesando, setProcesando] = useState(false)
   const [confirmacion, setConfirmacion] = useState<string | null>(null)
-  const [idVentaParaImprimir, setIdVentaParaImprimir] = useState<number | null>(null)
   const [codigoBarras, setCodigoBarras] = useState('')
   const [errorEscaneo, setErrorEscaneo] = useState<string | null>(null)
   const [avisoStock, setAvisoStock] = useState<string | null>(null)
@@ -382,10 +381,9 @@ function VentaMostrador({
     if (carrito.length === 0) return
     setError(null)
     setConfirmacion(null)
-    setIdVentaParaImprimir(null)
     setProcesando(true)
     try {
-      const venta = await ventaMostrador(
+      await ventaMostrador(
         carrito.map(({ origen, id_producto, cantidad }) => ({
           origen,
           id_producto,
@@ -397,7 +395,6 @@ function VentaMostrador({
       setCarrito([])
       setAvisoStock(null)
       setConfirmacion(`Venta cobrada: ${formatoMoneda.format(total)}`)
-      setIdVentaParaImprimir(venta.id_venta)
       await Promise.all([cargarMovimientos(), cargarProductos(), onCambio()])
     } catch {
       setError('No se pudo registrar la venta.')
@@ -496,16 +493,8 @@ function VentaMostrador({
         <div className="rounded-lg border border-border bg-card p-4">
           <h2 className="mb-3 font-serif text-lg font-semibold text-card-foreground">Carrito</h2>
           {confirmacion && (
-            <p className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md bg-primary/10 px-2 py-1 text-sm text-primary">
+            <p className="mb-2 rounded-md bg-primary/10 px-2 py-1 text-sm text-primary">
               {confirmacion}
-              {idVentaParaImprimir && (
-                <button
-                  onClick={() => window.open(`/ventas/${idVentaParaImprimir}/recibo`, '_blank')}
-                  className="text-xs font-medium underline hover:opacity-80"
-                >
-                  Imprimir recibo
-                </button>
-              )}
             </p>
           )}
           <ul className="mb-3 space-y-1">
@@ -596,6 +585,12 @@ function VentaMostrador({
                     <span className="text-sm font-medium text-foreground">
                       {formatoMoneda.format(venta.monto)}
                     </span>
+                    <button
+                      onClick={() => window.open(`/ventas/${venta.id_venta}/recibo`, '_blank')}
+                      className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    >
+                      <Printer size={13} /> Recibo
+                    </button>
                   </span>
                 </div>
                 <p className="truncate text-xs text-muted-foreground">

@@ -29,9 +29,13 @@ class ConsumoService:
         reserva = self.hospedaje_repository.obtener_reserva(datos.id_reserva)
         if reserva is None:
             raise NotFoundError("Reserva no encontrada")
-        if reserva.estado != "CHECK_IN":
+        # Se permite cargar consumo antes del check-in: el huesped suele pedir
+        # algo del bar o el restaurante mientras lo estan registrando. Lo unico
+        # que no admite consumo nuevo es una reserva cancelada o ya cerrada.
+        if reserva.estado not in ("RESERVADA", "CHECK_IN"):
             raise BusinessRuleError(
-                "Solo se puede cargar consumo a una habitacion con check-in activo"
+                "No se puede cargar consumo a una reserva cancelada o con "
+                "check-out ya hecho"
             )
 
         if datos.origen == "BAR":

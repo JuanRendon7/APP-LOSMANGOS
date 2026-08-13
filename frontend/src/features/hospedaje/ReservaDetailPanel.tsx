@@ -51,6 +51,7 @@ export function ReservaDetailPanel({
   const [idVentaParaImprimir, setIdVentaParaImprimir] = useState<number | null>(null)
   const [totalPendienteOcupada, setTotalPendienteOcupada] = useState(0)
   const [habitacionDestino, setHabitacionDestino] = useState('')
+  const [idReservaConsumo, setIdReservaConsumo] = useState<number | null>(null)
   const { turnos, idTurno, setIdTurno } = useTurnoCobro()
 
   const cargarProximas = useCallback(async () => {
@@ -329,8 +330,9 @@ export function ReservaDetailPanel({
               {proximas.map((reserva) => (
                 <li
                   key={reserva.id_reserva}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-2 py-1.5"
+                  className="rounded-md border border-border px-2 py-1.5"
                 >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="truncate text-xs">
                     <span className="font-medium text-foreground">{reserva.huesped.nombre}</span>
                     <span className="text-muted-foreground">
@@ -359,6 +361,16 @@ export function ReservaDetailPanel({
                         </button>
                       )}
                       <button
+                        onClick={() =>
+                          setIdReservaConsumo((actual) =>
+                            actual === reserva.id_reserva ? null : reserva.id_reserva,
+                          )
+                        }
+                        className="rounded-md border border-border px-2 py-1 text-xs font-medium hover:bg-secondary"
+                      >
+                        {idReservaConsumo === reserva.id_reserva ? 'Ocultar consumo' : 'Consumo'}
+                      </button>
+                      <button
                         onClick={() => manejarCheckIn(reserva.id_reserva)}
                         className="rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"
                       >
@@ -371,6 +383,14 @@ export function ReservaDetailPanel({
                         Cancelar
                       </button>
                     </div>
+                  )}
+                  </div>
+                  {puedeEditarReservas && idReservaConsumo === reserva.id_reserva && (
+                    <ConsumoPanel
+                      idReserva={reserva.id_reserva}
+                      precioHospedaje={reserva.precio_total}
+                      hospedajePagado={reserva.pagada}
+                    />
                   )}
                 </li>
               ))}

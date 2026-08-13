@@ -127,7 +127,9 @@ def test_agregar_consumo_restaurante_no_toca_stock(client, usuario_admin):
     assert resumen.json()["total"] == 30000
 
 
-def test_rechaza_consumo_si_reserva_no_esta_en_checkin(client, usuario_admin):
+def test_permite_consumo_antes_del_checkin(client, usuario_admin):
+    """El huesped suele pedir algo mientras lo estan registrando, antes de que
+    alcancen a hacerle el check-in."""
     token = token_para(client, usuario_admin.email)
     headers = auth_headers(token)
     habitacion = _habitacion_por_numero(client, headers, "104")
@@ -145,6 +147,42 @@ def test_rechaza_consumo_si_reserva_no_esta_en_checkin(client, usuario_admin):
     )
     reserva = crear.json()
     producto = _crear_producto_restaurante(client, headers, "Sopa")
+
+    resp = client.post(
+        "/consumo",
+        headers=headers,
+        json={
+            "id_reserva": reserva["id_reserva"],
+            "origen": "RESTAURANTE",
+            "id_producto": producto["id_producto"],
+            "cantidad": 1,
+        },
+    )
+    assert resp.status_code == 201, resp.text
+
+
+def test_rechaza_consumo_en_reserva_cancelada(client, usuario_admin):
+    token = token_para(client, usuario_admin.email)
+    headers = auth_headers(token)
+    habitacion = _habitacion_por_numero(client, headers, "106")
+    crear = client.post(
+        "/reservas",
+        headers=headers,
+        json={
+            "id_habitacion": habitacion["id_habitacion"],
+            "fecha_checkin_prevista": "2026-09-10",
+            "fecha_checkout_prevista": "2026-09-12",
+            "nombre": "Cancelada",
+            "cedula": "1100000010",
+            "contacto": "3000000000",
+        },
+    )
+    reserva = crear.json()
+    cancelar = client.post(
+        f"/reservas/{reserva['id_reserva']}/cancelar", headers=headers
+    )
+    assert cancelar.status_code == 200, cancelar.text
+    producto = _crear_producto_restaurante(client, headers, "Arroz")
 
     resp = client.post(
         "/consumo",

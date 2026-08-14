@@ -6,6 +6,7 @@ import { useTurnoCobro } from '@/features/caja/useTurnoCobro'
 import { listarProductosBar, listarProductosRestaurante } from '@/features/productos/api'
 import type { ProductoBar, ProductoRestaurante } from '@/features/productos/types'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { abrirCajonEfectivo } from '@/shared/lib/cajonEfectivo'
 import { BuscadorProducto } from '@/shared/ui/BuscadorProducto'
 import { DevueltaEfectivo } from '@/shared/ui/DevueltaEfectivo'
 import {
@@ -354,6 +355,7 @@ export function PedidoPanel({ mesa, mesasLibres, onCerrar, onActualizado }: Prop
                     metodoPago,
                     idTurno ?? undefined,
                   )
+                  if (metodoPago === 'EFECTIVO') abrirCajonEfectivo()
                   setIdVentaParaImprimir(venta.id_venta)
                 })
               }

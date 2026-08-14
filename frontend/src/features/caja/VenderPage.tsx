@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import { listarProductosBar, listarProductosRestaurante } from '@/features/productos/api'
 import type { ProductoBar, ProductoRestaurante } from '@/features/productos/types'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { abrirCajonEfectivo } from '@/shared/lib/cajonEfectivo'
 import { formatoHoraBogota } from '@/shared/lib/tiempo'
 import { BuscadorProducto } from '@/shared/ui/BuscadorProducto'
 import { DevueltaEfectivo } from '@/shared/ui/DevueltaEfectivo'
@@ -392,6 +393,7 @@ function VentaMostrador({
         metodoPago,
         idTurno,
       )
+      if (metodoPago === 'EFECTIVO') abrirCajonEfectivo()
       setCarrito([])
       setAvisoStock(null)
       setConfirmacion(`Venta cobrada: ${formatoMoneda.format(total)}`)

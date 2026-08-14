@@ -10,6 +10,12 @@ node_modules/
 dist/
 .vite/
 
+# Agente local de caja (el .exe compilado si se distribuye desde el repo)
+caja-agente/build/
+caja-agente/*.spec
+!caja-agente/dist/
+!caja-agente/dist/**
+
 # Env files
 .env
 .env.*

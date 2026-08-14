@@ -5,6 +5,7 @@ import type { MetodoPago } from '@/features/caja/types'
 import { useTurnoCobro } from '@/features/caja/useTurnoCobro'
 import { ConsumoPanel } from '@/features/consumo/ConsumoPanel'
 import { useAuth } from '@/shared/auth/AuthContext'
+import { abrirCajonEfectivo } from '@/shared/lib/cajonEfectivo'
 import { DevueltaEfectivo } from '@/shared/ui/DevueltaEfectivo'
 import { cambiarHabitacion, cancelarReserva, checkIn, checkOut, listarReservas } from './api'
 import type { Habitacion, Reserva } from './types'
@@ -95,6 +96,7 @@ export function ReservaDetailPanel({
     setCobrando(true)
     try {
       const venta = await cobrarHabitacion(idReserva, metodoPago, idTurno ?? undefined)
+      if (metodoPago === 'EFECTIVO') abrirCajonEfectivo()
       setIdVentaParaImprimir(venta.id_venta)
       await cargarProximas()
       await onActualizado()

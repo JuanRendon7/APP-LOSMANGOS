@@ -118,8 +118,13 @@ class CajaService:
 
     # Gastos
 
-    def listar_gastos(self, id_turno: int | None) -> list[Gasto]:
-        return self.repository.listar_gastos(id_turno)
+    def listar_gastos(
+        self,
+        id_turno: int | None,
+        desde: date | None = None,
+        hasta: date | None = None,
+    ) -> list[Gasto]:
+        return self.repository.listar_gastos(id_turno, desde, hasta)
 
     def _validar_fuente_pago(self, fuente_pago: str) -> None:
         if fuente_pago not in FUENTES_PAGO_GASTO:

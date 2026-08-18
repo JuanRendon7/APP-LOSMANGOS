@@ -782,6 +782,30 @@ def test_gasto_se_registra_en_la_caja_indicada(client, usuario_admin, monkeypatc
     assert gastos_diurno.json() == []
 
 
+def test_listar_gastos_filtra_por_rango_de_fechas_y_trae_nombre_cajero(
+    client, usuario_admin
+):
+    headers = auth_headers(token_para(client, usuario_admin.email))
+    _abrir_turno(client, headers)
+    gasto = client.post(
+        "/caja/gastos", headers=headers, json={"concepto": "Aseo", "monto": 3000}
+    )
+    assert gasto.status_code == 201, gasto.text
+    assert gasto.json()["nombre_cajero"] == usuario_admin.nombre
+
+    hoy = date.today().isoformat()
+    dentro_de_rango = client.get(
+        "/caja/gastos", headers=headers, params={"desde": hoy, "hasta": hoy}
+    )
+    assert len(dentro_de_rango.json()) == 1
+
+    ayer = date(2020, 1, 1).isoformat()
+    fuera_de_rango = client.get(
+        "/caja/gastos", headers=headers, params={"desde": ayer, "hasta": ayer}
+    )
+    assert fuera_de_rango.json() == []
+
+
 def test_listar_turnos_filtra_por_rango_de_fechas(client, usuario_admin):
     headers = auth_headers(token_para(client, usuario_admin.email))
     _abrir_turno(client, headers)

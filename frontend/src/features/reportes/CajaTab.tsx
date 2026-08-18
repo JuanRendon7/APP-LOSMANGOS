@@ -1,12 +1,12 @@
 import { Coins, Receipt, TriangleAlert, Wallet } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { listarTurnos } from '@/features/caja/api'
-import type { EstadoTurno, TipoTurno, TurnoCaja } from '@/features/caja/types'
+import { listarGastos, listarTurnos } from '@/features/caja/api'
+import type { EstadoTurno, Gasto, TipoTurno, TurnoCaja } from '@/features/caja/types'
 import { listarUsuarios } from '@/features/usuarios/api'
 import type { Usuario } from '@/features/usuarios/types'
 import { descargarExcel, PALETA_EXCEL } from '@/shared/lib/excel'
-import { formatoFechaBogota, formatoFechaHoraBogota } from '@/shared/lib/tiempo'
+import { formatoFechaBogota, formatoFechaHoraBogota, formatoHoraBogota } from '@/shared/lib/tiempo'
 import { Chip, formatoMoneda, StatCard } from './shared'
 
 type Detalle = 'turnos' | 'recaudado' | 'gastos' | 'descuadre' | null
@@ -18,6 +18,7 @@ interface Props {
 
 export function CajaTab({ desde, hasta }: Props) {
   const [turnos, setTurnos] = useState<TurnoCaja[]>([])
+  const [gastos, setGastos] = useState<Gasto[]>([])
   const [usuarios, setUsuarios] = useState<Usuario[]>([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -37,15 +38,19 @@ export function CajaTab({ desde, hasta }: Props) {
     async function cargar() {
       setCargando(true)
       try {
-        const datos = await listarTurnos({
-          desde: desde || undefined,
-          hasta: hasta || undefined,
-          idUsuario: idUsuario === 'TODOS' ? undefined : idUsuario,
-          estado: estado === 'TODOS' ? undefined : estado,
-          tipo: tipo === 'TODOS' ? undefined : tipo,
-        })
+        const [datosTurnos, datosGastos] = await Promise.all([
+          listarTurnos({
+            desde: desde || undefined,
+            hasta: hasta || undefined,
+            idUsuario: idUsuario === 'TODOS' ? undefined : idUsuario,
+            estado: estado === 'TODOS' ? undefined : estado,
+            tipo: tipo === 'TODOS' ? undefined : tipo,
+          }),
+          listarGastos({ desde: desde || undefined, hasta: hasta || undefined }),
+        ])
         if (cancelado) return
-        setTurnos(datos)
+        setTurnos(datosTurnos)
+        setGastos(datosGastos)
         setError(null)
       } catch {
         if (!cancelado) setError('No se pudo cargar el historico de caja.')
@@ -98,9 +103,6 @@ export function CajaTab({ desde, hasta }: Props) {
     if (detalle === 'recaudado') {
       return [...turnos].sort((a, b) => recaudo(b) - recaudo(a))
     }
-    if (detalle === 'gastos') {
-      return [...turnos].sort((a, b) => b.total_gastos - a.total_gastos)
-    }
     if (detalle === 'descuadre') {
       return turnosConDescuadre
     }
@@ -109,10 +111,17 @@ export function CajaTab({ desde, hasta }: Props) {
     )
   }, [turnos, detalle, turnosConDescuadre])
 
+  const gastosDetalle = useMemo(() => {
+    const idsTurnosFiltrados = new Set(turnos.map((t) => t.id_turno))
+    return gastos
+      .filter((g) => idsTurnosFiltrados.has(g.id_turno_caja))
+      .sort((a, b) => new Date(b.creado_en).getTime() - new Date(a.creado_en).getTime())
+  }, [gastos, turnos])
+
   const TITULO_DETALLE: Record<Exclude<Detalle, null>, string> = {
     turnos: 'Turnos en el rango',
     recaudado: 'Turnos ordenados por recaudo',
-    gastos: 'Turnos ordenados por gastos',
+    gastos: 'Gastos registrados',
     descuadre: 'Turnos con descuadre',
   }
 
@@ -218,7 +227,46 @@ export function CajaTab({ desde, hasta }: Props) {
         />
       </div>
 
-      {detalle && (
+      {detalle === 'gastos' && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h2 className="mb-3 font-serif text-base font-semibold text-foreground">
+            {TITULO_DETALLE.gastos} · {gastosDetalle.length}
+          </h2>
+          {gastosDetalle.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Sin gastos en este filtro.</p>
+          ) : (
+            <ul className="max-h-96 space-y-1.5 overflow-y-auto text-sm">
+              {gastosDetalle.map((g) => (
+                <li
+                  key={g.id_gasto}
+                  className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">
+                      {g.concepto}
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {formatoHoraBogota.format(new Date(g.creado_en))} ·{' '}
+                        {formatoFechaBogota.format(new Date(g.creado_en))}
+                      </span>
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {g.nombre_cajero ?? 'Cajero desconocido'}
+                      {g.nombre_proveedor && ` · Proveedor: ${g.nombre_proveedor}`}
+                      {' · '}
+                      {g.fuente_pago === 'AHORROS' ? 'Ahorros' : 'Caja'}
+                    </p>
+                  </div>
+                  <span className="shrink-0 font-semibold text-foreground">
+                    {formatoMoneda.format(g.monto)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {detalle && detalle !== 'gastos' && (
         <div className="rounded-xl border border-border bg-card p-4">
           <h2 className="mb-3 font-serif text-base font-semibold text-foreground">
             {TITULO_DETALLE[detalle]} · {turnosDetalle.length}

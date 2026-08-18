@@ -119,7 +119,7 @@ function CajaTurnoSection({ tipo, titulo }: { tipo: TipoTurno; titulo: string })
       setTurno(actual)
       if (actual) {
         const [gastosDatos, ventasDatos] = await Promise.all([
-          listarGastos(actual.id_turno),
+          listarGastos({ idTurno: actual.id_turno }),
           listarVentas({ idTurno: actual.id_turno }),
         ])
         setGastos(gastosDatos)

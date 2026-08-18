@@ -71,6 +71,7 @@ def _gasto_response(gasto: Gasto) -> GastoResponse:
         monto=gasto.monto,
         id_proveedor=gasto.id_proveedor,
         nombre_proveedor=gasto.proveedor.nombre if gasto.proveedor else None,
+        nombre_cajero=gasto.turno.usuario.nombre if gasto.turno else None,
         fuente_pago=gasto.fuente_pago,
         creado_en=gasto.creado_en,
     )
@@ -191,10 +192,12 @@ gastos_router = APIRouter(prefix="/caja/gastos", tags=["caja"])
 @gastos_router.get("", response_model=list[GastoResponse])
 def listar_gastos(
     id_turno: int | None = Query(default=None),
+    desde: date | None = Query(default=None),
+    hasta: date | None = Query(default=None),
     servicio: CajaService = Depends(get_caja_service),
     _: UsuarioActual = Depends(requiere_permiso("GASTOS", "VER")),
 ):
-    return [_gasto_response(g) for g in servicio.listar_gastos(id_turno)]
+    return [_gasto_response(g) for g in servicio.listar_gastos(id_turno, desde, hasta)]
 
 
 @gastos_router.post(

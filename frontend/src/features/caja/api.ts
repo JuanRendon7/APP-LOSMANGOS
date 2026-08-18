@@ -52,9 +52,17 @@ export async function cerrarTurno(
   return data
 }
 
-export async function listarGastos(idTurno: number): Promise<Gasto[]> {
+export async function listarGastos(params: {
+  idTurno?: number
+  desde?: string
+  hasta?: string
+}): Promise<Gasto[]> {
   const { data } = await apiClient.get<Gasto[]>('/caja/gastos', {
-    params: { id_turno: idTurno },
+    params: {
+      id_turno: params.idTurno,
+      desde: params.desde,
+      hasta: params.hasta,
+    },
   })
   return data
 }

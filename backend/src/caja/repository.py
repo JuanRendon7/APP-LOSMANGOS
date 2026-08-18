@@ -104,10 +104,22 @@ class CajaRepository:
     def obtener_gasto(self, id_gasto: int) -> Gasto | None:
         return self.db.get(Gasto, id_gasto)
 
-    def listar_gastos(self, id_turno: int | None) -> list[Gasto]:
-        stmt = select(Gasto)
+    def listar_gastos(
+        self,
+        id_turno: int | None,
+        desde: date | None = None,
+        hasta: date | None = None,
+    ) -> list[Gasto]:
+        stmt = select(Gasto).options(
+            selectinload(Gasto.proveedor),
+            selectinload(Gasto.turno).selectinload(TurnoCaja.usuario),
+        )
         if id_turno is not None:
             stmt = stmt.where(Gasto.id_turno_caja == id_turno)
+        if desde is not None:
+            stmt = stmt.where(Gasto.creado_en >= _inicio_dia(desde))
+        if hasta is not None:
+            stmt = stmt.where(Gasto.creado_en <= _fin_dia(hasta))
         return list(self.db.scalars(stmt.order_by(Gasto.creado_en.desc())))
 
     def crear_gasto(self, gasto: Gasto) -> Gasto:

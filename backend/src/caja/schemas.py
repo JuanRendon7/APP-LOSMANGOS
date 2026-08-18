@@ -54,6 +54,7 @@ class GastoResponse(BaseModel):
     monto: int
     id_proveedor: int | None
     nombre_proveedor: str | None
+    nombre_cajero: str | None
     fuente_pago: str
     creado_en: datetime
 

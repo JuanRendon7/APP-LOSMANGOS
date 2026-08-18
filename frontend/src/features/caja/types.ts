@@ -32,6 +32,7 @@ export interface Gasto {
   monto: number
   id_proveedor: number | null
   nombre_proveedor: string | null
+  nombre_cajero: string | null
   fuente_pago: FuentePagoGasto
   creado_en: string
 }

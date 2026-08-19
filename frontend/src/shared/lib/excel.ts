@@ -26,13 +26,18 @@ export interface ColumnaExcel {
   colorPorValor?: (valor: unknown) => string | undefined
 }
 
-export interface OpcionesExcel {
-  nombreArchivo: string
+export interface HojaExcel {
   hoja?: string
   titulo: string
   subtitulo?: string
   columnas: ColumnaExcel[]
   filas: Array<Array<string | number | Date | null>>
+}
+
+export interface OpcionesExcel extends HojaExcel {
+  nombreArchivo: string
+  /** Hojas extra que se agregan al mismo libro, despues de la principal. */
+  hojasAdicionales?: HojaExcel[]
 }
 
 const FORMATOS_NUMERO: Partial<Record<FormatoColumnaExcel, string>> = {
@@ -62,12 +67,8 @@ function anchoAutomatico(titulo: string, valores: string[]): number {
   return Math.min(Math.max(masLargo + 2, 11), 42)
 }
 
-export async function descargarExcel(opciones: OpcionesExcel): Promise<void> {
-  const { nombreArchivo, hoja = 'Datos', titulo, subtitulo, columnas, filas } = opciones
-
-  const workbook = new ExcelJS.Workbook()
-  workbook.creator = 'Hotel Los Mangos'
-  workbook.created = new Date()
+function escribirHoja(workbook: ExcelJS.Workbook, opciones: HojaExcel): void {
+  const { hoja = 'Datos', titulo, subtitulo, columnas, filas } = opciones
 
   const filaEncabezado = subtitulo ? 3 : 2
   const numColumnas = columnas.length
@@ -199,6 +200,19 @@ export async function descargarExcel(opciones: OpcionesExcel): Promise<void> {
     fitToPage: true,
     fitToWidth: 1,
     fitToHeight: 0,
+  }
+}
+
+export async function descargarExcel(opciones: OpcionesExcel): Promise<void> {
+  const { nombreArchivo, hojasAdicionales, ...hojaPrincipal } = opciones
+
+  const workbook = new ExcelJS.Workbook()
+  workbook.creator = 'Hotel Los Mangos'
+  workbook.created = new Date()
+
+  escribirHoja(workbook, hojaPrincipal)
+  for (const hoja of hojasAdicionales ?? []) {
+    escribirHoja(workbook, hoja)
   }
 
   const buffer = await workbook.xlsx.writeBuffer()

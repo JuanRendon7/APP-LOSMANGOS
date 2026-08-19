@@ -69,6 +69,15 @@ export function CajaTab({ desde, hasta }: Props) {
     [usuarios],
   )
 
+  const turnoPorId = useMemo(() => new Map(turnos.map((t) => [t.id_turno, t])), [turnos])
+
+  const etiquetaTurno = (idTurno: number): string => {
+    const turno = turnoPorId.get(idTurno)
+    if (!turno) return `Turno ${idTurno}`
+    const nombre = nombrePorUsuario.get(turno.id_usuario) ?? turno.nombre_usuario
+    return `${nombre} · ${turno.tipo === 'NOCTURNO' ? 'Nocturna' : 'Diurna'} · ${formatoFechaBogota.format(new Date(turno.creado_en))}`
+  }
+
   const {
     totalRecaudado,
     totalGastos,
@@ -118,6 +127,16 @@ export function CajaTab({ desde, hasta }: Props) {
       .sort((a, b) => new Date(b.creado_en).getTime() - new Date(a.creado_en).getTime())
   }, [gastos, turnos])
 
+  const resumenGastosPorFuente = useMemo(() => {
+    const caja = gastosDetalle
+      .filter((g) => g.fuente_pago === 'CAJA')
+      .reduce((suma, g) => suma + g.monto, 0)
+    const ahorros = gastosDetalle
+      .filter((g) => g.fuente_pago === 'AHORROS')
+      .reduce((suma, g) => suma + g.monto, 0)
+    return { caja, ahorros }
+  }, [gastosDetalle])
+
   const TITULO_DETALLE: Record<Exclude<Detalle, null>, string> = {
     turnos: 'Turnos en el rango',
     recaudado: 'Turnos ordenados por recaudo',
@@ -146,6 +165,19 @@ export function CajaTab({ desde, hasta }: Props) {
       t.monto_cierre_real,
       t.diferencia,
     ])
+    const filasGastos = gastosDetalle.map((g) => {
+      const turno = turnoPorId.get(g.id_turno_caja)
+      return [
+        g.creado_en,
+        turno ? etiquetaTurno(g.id_turno_caja) : `Turno ${g.id_turno_caja}`,
+        turno ? (turno.tipo === 'NOCTURNO' ? 'Nocturna' : 'Diurna') : '',
+        g.concepto,
+        g.nombre_proveedor ?? '—',
+        g.nombre_cajero ?? '—',
+        g.fuente_pago === 'AHORROS' ? 'Ahorros' : 'Caja',
+        g.monto,
+      ]
+    })
     await descargarExcel({
       nombreArchivo: `turnos_caja${desde && hasta ? `_${desde}_a_${hasta}` : ''}.xlsx`,
       hoja: 'Turnos de caja',
@@ -181,6 +213,26 @@ export function CajaTab({ desde, hasta }: Props) {
         },
       ],
       filas,
+      hojasAdicionales: [
+        {
+          hoja: 'Gastos',
+          titulo: 'Hotel Los Mangos · Gastos discriminados',
+          subtitulo: `Rango: ${desde || 'inicio'} a ${hasta || 'hoy'} · ${gastosDetalle.length} gastos · Caja: ${formatoMoneda.format(
+            resumenGastosPorFuente.caja,
+          )} · Ahorros: ${formatoMoneda.format(resumenGastosPorFuente.ahorros)}`,
+          columnas: [
+            { titulo: 'Fecha', formato: 'fechahora' },
+            { titulo: 'Turno', ancho: 30 },
+            { titulo: 'Tipo de caja', ancho: 12 },
+            { titulo: 'Concepto', ancho: 28 },
+            { titulo: 'Proveedor', ancho: 20 },
+            { titulo: 'Registrado por', ancho: 18 },
+            { titulo: 'Fuente de pago', ancho: 14 },
+            { titulo: 'Monto', formato: 'moneda', totalizar: true },
+          ],
+          filas: filasGastos,
+        },
+      ],
     })
   }
 
@@ -235,33 +287,45 @@ export function CajaTab({ desde, hasta }: Props) {
           {gastosDetalle.length === 0 ? (
             <p className="text-sm text-muted-foreground">Sin gastos en este filtro.</p>
           ) : (
-            <ul className="max-h-96 space-y-1.5 overflow-y-auto text-sm">
-              {gastosDetalle.map((g) => (
-                <li
-                  key={g.id_gasto}
-                  className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate font-medium text-foreground">
-                      {g.concepto}
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        {formatoHoraBogota.format(new Date(g.creado_en))} ·{' '}
-                        {formatoFechaBogota.format(new Date(g.creado_en))}
-                      </span>
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {g.nombre_cajero ?? 'Cajero desconocido'}
-                      {g.nombre_proveedor && ` · Proveedor: ${g.nombre_proveedor}`}
-                      {' · '}
-                      {g.fuente_pago === 'AHORROS' ? 'Ahorros' : 'Caja'}
-                    </p>
-                  </div>
-                  <span className="shrink-0 font-semibold text-foreground">
-                    {formatoMoneda.format(g.monto)}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <div className="mb-3 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-md bg-muted px-2.5 py-1.5 font-medium text-foreground">
+                  Pagados con caja: {formatoMoneda.format(resumenGastosPorFuente.caja)}
+                </span>
+                <span className="rounded-md bg-muted px-2.5 py-1.5 font-medium text-foreground">
+                  Pagados con ahorros: {formatoMoneda.format(resumenGastosPorFuente.ahorros)}
+                </span>
+              </div>
+              <ul className="max-h-96 space-y-1.5 overflow-y-auto text-sm">
+                {gastosDetalle.map((g) => (
+                  <li
+                    key={g.id_gasto}
+                    className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-foreground">
+                        {g.concepto}
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                          {formatoHoraBogota.format(new Date(g.creado_en))} ·{' '}
+                          {formatoFechaBogota.format(new Date(g.creado_en))}
+                        </span>
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        Registrado por {g.nombre_cajero ?? 'cajero desconocido'}
+                        {g.nombre_proveedor && ` · Proveedor: ${g.nombre_proveedor}`}
+                        {' · '}
+                        Pagado con {g.fuente_pago === 'AHORROS' ? 'ahorros' : 'caja'}
+                        {' · '}
+                        {etiquetaTurno(g.id_turno_caja)}
+                      </p>
+                    </div>
+                    <span className="shrink-0 font-semibold text-foreground">
+                      {formatoMoneda.format(g.monto)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
       )}

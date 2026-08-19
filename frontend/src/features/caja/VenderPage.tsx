@@ -1,4 +1,4 @@
-import { Barcode, Printer, Wallet } from 'lucide-react'
+import { Barcode, ChevronDown, ChevronUp, Printer, Wallet } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { listarProductosBar, listarProductosRestaurante } from '@/features/productos/api'
@@ -40,6 +40,8 @@ const CONTEXTO_ORIGEN: Record<OrigenVenta, string> = {
   MESA: 'Cobro de mesa',
   MOSTRADOR: 'Venta directa',
 }
+
+const UMBRAL_ITEMS_RESUMEN = 3
 
 interface ItemCarrito extends VentaMostradorItemInput {
   nombre: string
@@ -227,6 +229,7 @@ function VentaMostrador({
   const [avisoStock, setAvisoStock] = useState<string | null>(null)
   const [movimientos, setMovimientos] = useState<Venta[]>([])
   const [deshaciendo, setDeshaciendo] = useState(false)
+  const [expandidos, setExpandidos] = useState<Set<number>>(new Set())
   const inputBarcodeRef = useRef<HTMLInputElement>(null)
 
   const puedeDeshacer = tienePermiso('VENTAS', 'EDITAR')
@@ -423,6 +426,18 @@ function VentaMostrador({
     turno.total_efectivo + turno.total_tarjeta + turno.total_transferencia + turno.total_qr
   const ultimoMovimiento = movimientos[0]
 
+  const alternarExpandido = (idVenta: number) => {
+    setExpandidos((prev) => {
+      const copia = new Set(prev)
+      if (copia.has(idVenta)) {
+        copia.delete(idVenta)
+      } else {
+        copia.add(idVenta)
+      }
+      return copia
+    })
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
@@ -566,10 +581,14 @@ function VentaMostrador({
         <ul className="space-y-1 text-sm">
           {movimientos.map((venta) => {
             const contexto = CONTEXTO_ORIGEN[venta.origen]
+            const tieneMuchosItems = venta.items.length > UMBRAL_ITEMS_RESUMEN
+            const expandido = expandidos.has(venta.id_venta)
             const resumenProductos =
-              venta.items.length > 0
-                ? venta.items.map((item) => `${item.cantidad}× ${item.nombre_producto}`).join(', ')
-                : null
+              venta.items.length === 0
+                ? null
+                : tieneMuchosItems
+                  ? `${venta.items.length} productos`
+                  : venta.items.map((item) => `${item.cantidad}× ${item.nombre_producto}`).join(', ')
             const lugar =
               venta.origen === 'MESA' && venta.nombre_mesa
                 ? venta.nombre_mesa
@@ -579,7 +598,7 @@ function VentaMostrador({
             return (
               <li key={venta.id_venta} className="rounded-md px-2 py-1.5 odd:bg-muted/40">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-medium text-foreground">
+                  <span className="min-w-0 truncate font-medium text-foreground">
                     {resumenProductos ?? contexto}
                   </span>
                   <span className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
@@ -599,6 +618,34 @@ function VentaMostrador({
                   {formatoHoraBogota.format(new Date(venta.creado_en))} · {contexto}
                   {lugar && ` · ${lugar}`}
                 </p>
+                {tieneMuchosItems && (
+                  <>
+                    <button
+                      onClick={() => alternarExpandido(venta.id_venta)}
+                      className="mt-1 flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                    >
+                      {expandido ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                      {expandido ? 'Ocultar productos' : `Ver los ${venta.items.length} productos`}
+                    </button>
+                    {expandido && (
+                      <ul className="mt-1.5 space-y-1 rounded-md bg-muted/40 px-2.5 py-1.5">
+                        {venta.items.map((item) => (
+                          <li
+                            key={item.id_venta_item}
+                            className="flex items-center justify-between gap-2 text-xs text-muted-foreground"
+                          >
+                            <span className="min-w-0 truncate">
+                              {item.cantidad} × {item.nombre_producto}
+                            </span>
+                            <span className="shrink-0 font-medium text-foreground">
+                              {formatoMoneda.format(item.cantidad * item.precio_unitario)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
               </li>
             )
           })}
